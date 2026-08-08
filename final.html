@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab Complete: Congratulations!</title>
+    <link rel="stylesheet" href="/style/style_lab/style.css">
+    <style>
+        /* Celebration Animation Styles */
+        .celebration-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confettiFall linear forwards;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100px) rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            25% {
+                transform: translateY(25vh) rotate(90deg) scale(1.1);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(50vh) rotate(180deg) scale(0.9);
+                opacity: 0.8;
+            }
+            75% {
+                transform: translateY(75vh) rotate(270deg) scale(0.7);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg) scale(0.4);
+                opacity: 0;
+            }
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-80px) scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        .floating-emoji {
+            position: absolute;
+            font-size: 1.8rem;
+            animation: floatUp 2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        /* Professional subtle sparkle */
+        .trophy-sparkle {
+            animation: professionalGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes professionalGlow {
+            0% {
+                text-shadow: 0 0 15px rgba(250, 204, 21, 0.4), 0 0 30px rgba(250, 204, 21, 0.2);
+            }
+            100% {
+                text-shadow: 0 0 25px rgba(250, 204, 21, 0.6), 0 0 50px rgba(250, 204, 21, 0.3);
+            }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 25px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(250, 204, 21, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .stat-number {
+            font-size: 2.8rem;
+            font-weight: 300;
+            color: #facc15;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #8892b0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+        }
+
+        .message-box {
+            background: rgba(250, 204, 21, 0.03);
+            border: 1px solid rgba(250, 204, 21, 0.15);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            font-size: 1.05rem;
+            line-height: 1.9;
+            color: #ccd6f6;
+            text-align: center;
+        }
+
+        .message-box strong {
+            color: #facc15;
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        /* Professional Lab List Styles */
+        .lab-list-section {
+            margin: 30px 0;
+        }
+
+        .lab-category {
+            margin-bottom: 25px;
+        }
+
+        .lab-category h4 {
+            color: #8892b0;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lab-category h4 .category-count {
+            background: rgba(250, 204, 21, 0.1);
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #facc15;
+            letter-spacing: 0.5px;
+        }
+
+        .lab-list {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 8px;
+        }
+
+        .lab-list li {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 14px 18px;
+            color: #ccd6f6;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .lab-list li:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(250, 204, 21, 0.2);
+        }
+
+        .lab-list li.completed {
+            border-left: 2px solid rgba(72, 187, 120, 0.5);
+        }
+
+        .lab-list li .check-icon {
+            color: #48bb78;
+            font-size: 1.1rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .lab-list li .lab-info {
+            flex: 1;
+        }
+
+        .lab-list li .lab-name {
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: #e2e8f0;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .lab-list li .lab-desc {
+            font-size: 0.8rem;
+            color: #8892b0;
+            display: block;
+            line-height: 1.4;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Completion Ceremony</p>
+        <p class="author">Celebrating Your Achievement</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge" style="background: rgba(250, 204, 21, 0.1); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.2);">COMPLETION CERTIFICATE</div>
+        <h2 style="color: #facc15;" class="trophy-sparkle">
+            Congratulations
+        </h2>
+        <p class="subtitle">All XSS Labs Successfully Completed</p>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">9</div>
+                <div class="stat-label">Total Labs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Completion</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Categories</div>
+            </div>
+        </div>
+
+        <!-- Lab List Section -->
+        <div class="lab-list-section">
+            <h3 style="color: #ccd6f6; margin-bottom: 20px; font-weight: 500; font-size: 1rem; letter-spacing: 1px; text-transform: uppercase;">Completed Laboratories</h3>
+            
+            <!-- Reflected XSS Category -->
+            <div class="lab-category">
+                <h4>Reflected XSS <span class="category-count">5</span></h4>
+                <ul class="lab-list">
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 01 — GET Parameter Reflection</span>
+                            <span class="lab-desc">innerHTML injection via URL query parameter without sanitization</span>
+                        </div>
+                    </li>
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 04 — Attribute Breakout</span>
+                            <span class="lab-desc">HTML-encoded angle brackets bypass through attribute injection</span>
+                        </div>
+                    </li>
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 06 — Search Result Injection</span>
+                            <span class="lab-desc">Malicious script injection through unsanitized search queries</span>
+                        </div>
+                    </li>
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 07 — Referer Header Exploitation</span>
+                            <span class="lab-desc">Script injection via the HTTP Referer request header</span>
+                        </div>
+                    </li>
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 08 — Image Upload Vector</span>
+                            <span class="lab-desc">XSS payload delivery through file upload functionality</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Stored XSS Category -->
+            <div class="lab-category">
+                <h4>Stored XSS <span class="category-count">3</span></h4>
+                <ul class="lab-list">
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 02 — Comment Section Persistence</span>
+                            <span class="lab-desc">Persistent malicious input stored and rendered from comment form</span>
+                        </div>
+                    </li>
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 05 — Profile Field Injection</span>
+                            <span class="lab-desc">Cross-session script persistence through user profile data</span>
+                        </div>
+                    </li>
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 09 — Chat Application Exploit</span>
+                            <span class="lab-desc">Real-time stored XSS through chat message functionality</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- DOM-based XSS Category -->
+            <div class="lab-category">
+                <h4>DOM-based XSS <span class="category-count">1</span></h4>
+                <ul class="lab-list">
+                    <li class="completed">
+                        <span class="check-icon">✓</span>
+                        <div class="lab-info">
+                            <span class="lab-name">Lab 03 — URL Fragment Injection</span>
+                            <span class="lab-desc">Client-side JavaScript injection through unsanitized URL hash fragment</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="message-box">
+            <strong>Thank you for your dedication and hard work.</strong><br><br>
+            Completing all nine laboratories demonstrates a thorough understanding of Cross-Site Scripting vulnerabilities across multiple attack surfaces. You have successfully identified and exploited:<br><br>
+            <span style="color: #facc15;">—</span> Reflected XSS across parameters, attributes, headers, and file uploads<br>
+            <span style="color: #facc15;">—</span> Stored XSS in comments, user profiles, and real-time applications<br>
+            <span style="color: #facc15;">—</span> DOM-based XSS through client-side script injection<br><br>
+            <strong>I am proud of your achievement. Continue building your expertise in cybersecurity.</strong><br>
+            <em style="color: #8892b0;">— With appreciation</em>
+        </div>
+
+        <div class="description" style="text-align: center; font-size: 1rem; color: #8892b0;">
+            <p>This accomplishment marks the beginning of your journey toward mastery in application security.</p>
+            <p style="color: #ccd6f6;">Wishing you continued success in all future endeavors.</p>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab9.html'">
+            <span class="btn-icon">&#8592;</span> Previous
+        </button>
+        <button class="nav-btn btn-next" onclick="restartCelebration()" style="background: rgba(250, 204, 21, 0.1); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3);">
+            Celebrate Again
+        </button>
+    </div>
+
+    <div class="footer">
+        
+    </div>
+</div>
+
+<div class="celebration-overlay" id="celebrationOverlay"></div>
+
+<script>
+    function toggleSolution() {
+        // Placeholder for compatibility
+    }
+
+    // ============ PROFESSIONAL CELEBRATION EFFECTS ============
+    
+    const confettiColors = [
+        '#facc15', '#c9a914', '#e5c217', '#d4af37', '#b8960f',
+        '#f0d060', '#dac04a', '#c5a830', '#b89820', '#a88818'
+    ];
+
+    function createConfetti() {
+        const overlay = document.getElementById('celebrationOverlay');
+        const confettiCount = 100;
+
+        for (let i = 0; i < confettiCount; i++) {
+            setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.backgroundColor = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+                confetti.style.width = (Math.random() * 8 + 4) + 'px';
+                confetti.style.height = (Math.random() * 8 + 4) + 'px';
+                confetti.style.borderRadius = '2px';
+                confetti.style.animationDuration = (Math.random() * 4 + 3) + 's';
+                confetti.style.animationDelay = Math.random() * 0.8 + 's';
+                confetti.style.opacity = '0.7';
+                
+                overlay.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 6000);
+            }, i * 25);
+        }
+    }
+
+    function restartCelebration() {
+        const overlay = document.getElementById('celebrationOverlay');
+        overlay.innerHTML = '';
+        createConfetti();
+        
+        // Scroll to top smoothly
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Auto-start celebration on page load
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            createConfetti();
+        }, 500);
+    });
+
+    // Single celebration wave
+    setInterval(() => {
+        createConfetti();
+    }, 8000);
+
+    console.log('✓ All 9 XSS Laboratories Completed');
+    console.log('✓ Categories: Reflected (5) | Stored (3) | DOM-based (1)');
+    console.log('✓ Completion: 100%');
+</script>
+</body>
+</html>

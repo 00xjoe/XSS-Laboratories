@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #6: Reflected XSS in Search Results</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+    <style>
+        /* ---- Modern layer (scoped additions, doesn't fight your base stylesheet) ---- */
+        :root{
+            --accent1:#6366f1; --accent2:#ec4899; --accent3:#22d3ee;
+            --panel:#14141c; --panel-2:#1c1c28; --border:#2a2a3a;
+            --danger:#f87171; --success:#4ade80; --warn:#facc15;
+        }
+        body{ background: radial-gradient(1200px 600px at 10% -10%, #1a1730 0%, #0a0a12 55%) fixed; }
+        .lab-card{
+            background: linear-gradient(180deg, rgba(28,28,40,.9), rgba(18,18,26,.9));
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: 0 20px 60px -20px rgba(99,102,241,.25), 0 0 0 1px rgba(255,255,255,.02) inset;
+            backdrop-filter: blur(6px);
+        }
+        .badge{
+            display:inline-flex; align-items:center; gap:8px;
+            background: linear-gradient(90deg, rgba(248,113,113,.15), rgba(236,72,153,.15));
+            border:1px solid rgba(248,113,113,.35);
+            padding:6px 14px; border-radius:999px; font-weight:600; letter-spacing:.02em;
+        }
+        .difficulty-pill{
+            display:inline-flex; align-items:center; gap:6px; margin-left:10px;
+            background: linear-gradient(90deg, rgba(250,204,21,.15), rgba(248,113,113,.15));
+            border:1px solid rgba(250,204,21,.4); color:var(--warn);
+            padding:5px 12px; border-radius:999px; font-size:.82em; font-weight:700;
+        }
+        h2 { background: linear-gradient(90deg, var(--warn), var(--accent2));
+             -webkit-background-clip:text; background-clip:text; color:transparent !important; }
+        .description{
+            background: var(--panel-2); border:1px solid var(--border); border-radius:14px;
+            padding:18px 20px; line-height:1.7; color:#d6d6e0;
+        }
+        .description code, .subtitle code { background:#0d0d14; border:1px solid var(--border);
+            padding:2px 6px; border-radius:6px; color:var(--accent3); font-size:.92em; }
+        .vulnerable-section{
+            margin-top:20px; padding:20px; border-radius:14px;
+            background: linear-gradient(180deg, rgba(248,113,113,.06), rgba(248,113,113,.02));
+            border:1px solid rgba(248,113,113,.3);
+        }
+        .section-label{
+            display:inline-block; font-weight:700; letter-spacing:.04em; color:var(--danger);
+            margin-bottom:12px; text-transform:uppercase; font-size:.85em;
+        }
+        .challenge-box{
+            background:#0d0d14; border:1px dashed rgba(250,204,21,.4); border-radius:12px;
+            padding:14px 16px; margin-bottom:16px; color:#e5e5ef; font-size:.94em; line-height:1.6;
+        }
+        .filter-status{
+            display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 16px;
+        }
+        .filter-chip{
+            font-size:.78em; padding:4px 10px; border-radius:999px; border:1px solid var(--border);
+            background:#0d0d14; color:#9a9aad;
+        }
+        .search-row{ display:flex; gap:10px; margin-bottom:14px; }
+        .search-row input{
+            flex:1; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+            background:#0d0d14; color:#eee; font-size:.95em; transition: border-color .2s, box-shadow .2s;
+        }
+        .search-row input:focus{ outline:none; border-color:var(--accent1); box-shadow:0 0 0 3px rgba(99,102,241,.2); }
+        button.btn-success{
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            border:none; color:white; padding:12px 18px; border-radius:10px; font-weight:600;
+            cursor:pointer; transition: transform .15s ease, box-shadow .15s ease; letter-spacing:.01em;
+        }
+        button.btn-success:hover{ transform: translateY(-1px); box-shadow: 0 10px 25px -10px rgba(99,102,241,.6); }
+        button.btn-success:active{ transform: translateY(0); }
+        .result-box{
+            min-height:26px; padding:14px; background:#0d0d14; border:1px solid var(--border);
+            border-radius:10px; color:#eee; font-size:.95em; word-break:break-word;
+        }
+        .hint-btn{
+            background:transparent; border:1px solid var(--border); color:#a5a5c0;
+            padding:8px 14px; border-radius:8px; font-size:.85em; cursor:pointer; margin-top:10px;
+        }
+        .hint-btn:hover{ border-color: var(--accent3); color: var(--accent3); }
+        .hint-text{ display:none; margin-top:10px; padding:12px; background:#0d0d14; border-left:3px solid var(--accent3);
+            border-radius:6px; font-size:.88em; color:#c9c9e0; line-height:1.6; }
+        .hint-text.show{ display:block; }
+        pre{
+            background:#0a0a10 !important; border:1px solid var(--border); border-radius:12px;
+            padding:16px !important; overflow-x:auto; line-height:1.6; font-size:.88em;
+        }
+        .solution-panel{
+            margin-top:16px; border:1px solid rgba(74,222,128,.25); border-radius:14px;
+            padding:20px; background: linear-gradient(180deg, rgba(74,222,128,.05), transparent);
+        }
+        .solution-panel h3{ color:var(--success) !important; }
+        #solutionBtn{
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+        }
+        .success-flag{
+            display:none; margin-top:12px; padding:12px 16px; border-radius:10px;
+            background: linear-gradient(90deg, rgba(74,222,128,.15), rgba(34,211,238,.15));
+            border:1px solid rgba(74,222,128,.4); color:var(--success); font-weight:600;
+        }
+        .success-flag.show{ display:block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Reflected XSS Demonstration</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">VULNERABLE - Reflected XSS</div>
+        <span class="difficulty-pill">Medium-Hard (Filter Bypass)</span>
+        <h2>Lab #6: Reflected XSS in Search Results</h2>
+        <p class="subtitle">
+            The obvious payload is blocked. Can you find what the filter missed?
+        </p>
+
+        <div class="description">
+            <p>
+                Search boxes almost always echo the search term back — "Showing results for
+                <em>laptop</em>". Real applications rarely ship with <em>zero</em> defenses
+                though; more often a developer bolts on a quick filter after noticing the
+                obvious attack, then assumes the problem is solved.
+            </p>
+            <p>
+                This lab simulates exactly that: a naive, WAF-style filter blocks the textbook
+                payload. Your job is to find an input the filter doesn't account for. Real
+                attackers do this constantly — regex-based filters almost always have gaps.
+            </p>
+        </div>
+
+        <div class="vulnerable-section">
+            <div class="section-label">Vulnerable Component</div>
+
+            <div class="challenge-box">
+                <strong>Challenge:</strong> Get a JavaScript popup (<code>alert</code>,
+                <code>confirm</code>, or <code>prompt</code>) to fire through the search box.
+                The filter below blocks the first thing you'll try — read the filter rules,
+                then think about what they <em>don't</em> cover.
+            </div>
+
+            <div class="filter-status">
+                <span class="filter-chip">blocks: &lt;script&gt; tags</span>
+                <span class="filter-chip">blocks: onerror=</span>
+                <span class="filter-chip">blocks: literal "alert("</span>
+            </div>
+
+            <div class="search-row">
+                <input type="text" id="searchInput" placeholder="Search products...">
+                <button class="btn-success" onclick="doSearch()">Search</button>
+            </div>
+
+            <div id="searchResult" class="result-box"></div>
+            <div id="successFlag" class="success-flag">
+                Popup executed — you found a filter bypass! Open "Show Solution" to see why it worked.
+            </div>
+
+            <button class="hint-btn" onclick="toggleHint()">Need a hint?</button>
+            <div class="hint-text" id="hintText">
+                The filter checks for the literal string <code>onerror=</code> and the literal
+                word <code>alert(</code> — but HTML has dozens of event-handler attributes, and
+                JavaScript has more than one way to pop a dialog. Also: the filter runs once,
+                not recursively — what happens if your blocked substring is hiding
+                <em>inside</em> a larger string that only becomes the blocked string
+                <em>after</em> part of it gets removed?
+            </div>
+
+            <pre style="margin-top:18px; color:#f88;"><code>// VULNERABLE CODE (with naive filter)
+function sanitize(input) {
+    // "Should be enough" - blocks the textbook payload only
+    let clean = input.replace(/&lt;script[\s\S]*?&gt;[\s\S]*?&lt;\/script&gt;/gi, '');
+    clean = clean.replace(/onerror\s*=/i, '');   // only checks THIS one attribute
+    clean = clean.replace(/alert\s*\(/i, '');    // only checks THIS one function name
+    return clean;
+}
+
+function doSearch() {
+    const query = sanitize(document.getElementById('searchInput').value);
+    document.getElementById('searchResult').innerHTML =
+        'Showing results for: ' + query;          // still innerHTML!
+}</code></pre>
+        </div>
+
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+
+        <div class="solution-panel" id="solutionPanel">
+            <h3>Why the Filter Failed</h3>
+            <p>This lab has two independent bugs stacked together:</p>
+            <ul style="margin-left:20px; line-height:1.8;">
+                <li>
+                    <strong>Blocklisting is incomplete by nature.</strong> The filter only
+                    checks <code>onerror=</code>, but HTML has 70+ event-handler attributes:
+                    <code>onload</code>, <code>onfocus</code> (combine with <code>autofocus</code>
+                    on an <code>&lt;input&gt;</code>/<code>&lt;select&gt;</code>), <code>onpointerover</code>,
+                    <code>onwheel</code>, <code>onanimationstart</code> (with CSS), etc. Example bypass:<br>
+                    <code>&lt;svg onload=confirm(1)&gt;</code> or
+                    <code>&lt;input autofocus onfocus=confirm(1)&gt;</code>
+                </li>
+                <li>
+                    <strong>Blocking a function name doesn't block the capability.</strong>
+                    JavaScript can call <code>window.alert</code> without ever typing the
+                    literal string <code>alert(</code> — for example
+                    <code>confirm(1)</code>, <code>prompt(1)</code>, or bracket-notation tricks
+                    like <code>top['al'+'ert'](1)</code> and
+                    <code>window['ale'+'rt'](1)</code>.
+                </li>
+                <li>
+                    <strong>Single-pass replace can be defeated by nesting.</strong> A regex
+                    that strips one occurrence of a pattern can be beaten by embedding the
+                    pattern inside itself, so that removing the "bad" substring reconstitutes
+                    it — the classic <code>&lt;scr&lt;script&gt;ipt&gt;</code> trick for tag
+                    filters.
+                </li>
+            </ul>
+
+            <p>The real fix isn't a smarter blocklist — it's not treating the sink as HTML at all:</p>
+            <pre style="color:#4ade80;"><code>// FIXED CODE - no filter needed, because there's no HTML parsing
+function doSearch() {
+    const query = document.getElementById('searchInput').value;
+
+    // safe: browser renders this as literal text, never parsed as markup,
+    // regardless of what characters or attribute names it contains
+    document.getElementById('searchResult').textContent =
+        'Showing results for: ' + query;
+}</code></pre>
+
+            <p>Additional hardening for real-world search features:</p>
+            <ul style="margin-left:20px; line-height:1.8;">
+                <li>Never rely on a blocklist as your only defense — allowlists and
+                    context-aware output encoding are the actual fix; a blocklist is
+                    at best a secondary speed bump.</li>
+                <li>If rich formatting is genuinely required (bold matches, etc.), use a
+                    dedicated, actively-indextained sanitizer (e.g. DOMPurify) instead of
+                    hand-rolled regex.</li>
+                <li>Add a strict <code>Content-Security-Policy</code> (no
+                    <code>unsafe-inline</code>) as defense in depth — it would have
+                    blocked every payload above even if the filter had been bypassed.</li>
+                <li>Fuzz-test filters against known bypass lists (e.g. PortSwigger's XSS
+                    cheat sheet) before trusting them in production.</li>
+            </ul>
+
+            <button class="btn-success" style="width:100%; margin-top:12px;" onclick="runFixedDemo()">
+                Try the Fixed Version
+            </button>
+            <div id="fixedResult" class="result-box" style="margin-top:10px;"></div>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab5-view.html'">
+            <span class="btn-icon">&#8592;</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab7.html'">
+            Next Lab <span class="btn-icon">&#8594;</span>
+        </button>
+    </div>
+
+    <div class="footer"></div>
+</div>
+
+<script>
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = 'Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = 'Hide Solution & Fix';
+        }
+    }
+
+    function toggleHint() {
+        document.getElementById('hintText').classList.toggle('show');
+    }
+
+    // --- Naive filter: blocks the textbook payload, misses everything else ---
+    function sanitize(input) {
+        let clean = input.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+        clean = clean.replace(/onerror\s*=/i, '');
+        clean = clean.replace(/alert\s*\(/i, '');
+        return clean;
+    }
+
+    // --- Vulnerable demo (filtered, but still uses innerHTML) ---
+    function doSearch() {
+        const raw = document.getElementById('searchInput').value;
+        const query = sanitize(raw);
+        document.getElementById('searchResult').innerHTML = 'Showing results for: ' + query;
+        checkForPopupBypass(query);
+    }
+
+    // Detect (heuristically) whether the surviving payload looks like a working bypass,
+    // just to power the on-page "success" flag - doesn't affect the actual sink.
+    function checkForPopupBypass(query) {
+        const flag = document.getElementById('successFlag');
+        const looksLikeBypass = /on\w+\s*=/i.test(query) && /<\w+/.test(query) &&
+                                 !/onerror\s*=/i.test(query);
+        if (looksLikeBypass) {
+            flag.classList.add('show');
+        } else {
+            flag.classList.remove('show');
+        }
+    }
+
+    // Reflect ?q= on load, exactly like a real vulnerable search page (still filtered)
+    window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q');
+        if (q) {
+            const clean = sanitize(q);
+            document.getElementById('searchInput').value = q;
+            document.getElementById('searchResult').innerHTML = 'Showing results for: ' + clean;
+            checkForPopupBypass(clean);
+        }
+    });
+
+    // --- Fixed demo (uses textContent, no filter required) ---
+    function runFixedDemo() {
+        const payload = "<svg onload=confirm('XSS still blocked here')>";
+        document.getElementById('fixedResult').textContent = 'Showing results for: ' + payload;
+    }
+</script>
+</body>
+</html>

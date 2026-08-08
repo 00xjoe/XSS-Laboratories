@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/webp" href="images/bug.jpg">
+    <link rel="stylesheet" href="style/style.css">
+    <title>XSS Labs </title>
+    <style>
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- Header -->
+    <header class="header">
+        <img class="logo" src="images/virus.png" alt="XSS Labs Logo">
+        <h1>XSS Laboratories</h1>
+        <p class="tagline">Interactive Cross-Site Scripting Practice Labs</p>
+        <p class="author">Created by <strong>Abdulmohsen</strong></p>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-number">9</div>
+            <div class="stat-label">Total Labs</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">5</div>
+            <div class="stat-label">Reflected XSS</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">3</div>
+            <div class="stat-label">Stored XSS</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">1</div>
+            <div class="stat-label">DOM XSS</div>
+        </div>
+    </div>
+
+    <!-- Lab Grid -->
+    <div class="lab-grid">
+        
+        <!-- Lab 1 -->
+        <a href="lab1.html" class="lab-card">
+            <span class="lab-number">Lab 01</span>
+            <h3>GET Parameter Reflection</h3>
+            <p class="lab-type">🔴 Reflected XSS</p>
+            <p class="lab-desc">Exploit innerHTML injection via URL query parameter. No sanitization applied.</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 2 -->
+        <a href="lab2.html" class="lab-card">
+            <span class="lab-number">Lab 02</span>
+            <h3>Stored Comment Injection</h3>
+            <p class="lab-type">🔴 Stored XSS</p>
+            <p class="lab-desc">Submit malicious input through a comment form that gets stored and reflected on the page.</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 3 -->
+        <a href="lab3.html" class="lab-card">
+            <span class="lab-number">Lab 03</span>
+            <h3>DOM-based XSS via URL Fragment</h3>
+            <p class="lab-type">🔴 DOM-based XSS</p>
+            <p class="lab-desc">Inject JavaScript through the URL fragment (#) that is written to the DOM without sanitization.</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 4 -->
+        <a href="lab4.html" class="lab-card">
+            <span class="lab-number">Lab 04</span>
+            <h3>Reflected XSS into Attribute</h3>
+            <p class="lab-type">🔴 Reflected XSS</p>
+            <p class="lab-desc">Angle Brackets HTML-Encoded - Break Out of Attribute</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 5 -->
+        <a href="lab5.html" class="lab-card">
+            <span class="lab-number">Lab 05</span>
+            <h3>Stored XSS in Profile</h3>
+            <p class="lab-type">🔴 Stored XSS</p>
+            <p class="lab-desc">Inject malicious scripts through user profile fields that persist across sessions.</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 6 -->
+        <a href="lab6.html" class="lab-card">
+            <span class="lab-number">Lab 06</span>
+            <h3>Reflected XSS in Search Results</h3>
+            <p class="lab-type">🔴 Reflected XSS</p>
+            <p class="lab-desc">Demonstrates how search queries can be exploited to inject malicious scripts.</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 7 -->
+        <a href="lab7.html" class="lab-card">
+            <span class="lab-number">Lab 07</span>
+            <h3>Reflected XSS via Referer Header</h3>
+            <p class="lab-type">🔴 Reflected XSS</p>
+            <p class="lab-desc">Demonstrates how the Referer header can be exploited to inject malicious scripts.</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 8 -->
+        <a href="lab8.html" class="lab-card">
+            <span class="lab-number">Lab 08</span>
+            <h3>Reflected XSS in Image Upload</h3>
+            <p class="lab-type">🔴 Reflected XSS</p>
+            <p class="lab-desc">Demonstrates how image upload functionality can be exploited to inject malicious scripts.</p>
+            <span class="arrow">→</span>
+        </a>
+
+        <!-- Lab 9 -->
+        <a href="lab9.html" class="lab-card">
+            <span class="lab-number">Lab 09</span>
+            <h3>Stored XSS in Chat Application</h3>
+            <p class="lab-type">🔴 Stored XSS</p>
+            <p class="lab-desc">Demonstrates how a chat application can be exploited to inject malicious scripts.</p>
+            <span class="arrow">→</span>
+        </a>
+
+    </div>
+
+    <!-- Tips Section -->
+    <div class="tips-section">
+        <h2>💡 Tips for Solving XSS Labs</h2>
+        <ul>
+            <li>Use the browser's developer tools (F12) to inspect the DOM and see how your input is reflected.</li>
+            <li>Try different payloads and encoding techniques to bypass filters.</li>
+            <li>Check the console for any errors or warnings that might give hints.</li>
+            <li>Remember to test both GET and POST parameters, as well as headers.</li>
+        </ul>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p> XSS Laboratories | Practice Web Security Safely</p>
+        <p>Created by <a href="https://00xjoe.github.io/Abdulmohsen_Alwaleed/Whoami.html">Abdulmohsen</a> | All labs run entirely in your browser</p>
+    </div>
+
+</div>
+
+<script>
+    // Add subtle animation when cards come into view
+    document.addEventListener('DOMContentLoaded', function() {
+        const cards = document.querySelectorAll('.lab-card');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.5s ease';
+            
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 100 * index);
+        });
+    });
+</script>
+
+</body>
+</html>

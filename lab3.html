@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #3: DOM-based XSS via URL Fragment</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">DOM-based XSS Vulnerability Demonstration</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">VULNERABLE - DOM-based XSS</div>
+        <h2 style="color: #facc15;">Lab #3: DOM-based XSS via URL Fragment</h2>
+        <p class="subtitle">Client-side XSS through document.write injection</p>
+
+        <div class="description">
+            This lab demonstrates a <strong>DOM-based XSS vulnerability</strong> where JavaScript reads the 
+            <code>#</code> (hash/fragment) from the URL and writes it directly to the page using 
+            <code>document.write()</code> without sanitization. The payload never touches the server — 
+            it's purely client-side.<br><br>
+            <strong>Goal:</strong> Execute JavaScript by crafting a malicious URL fragment (#) parameter.
+        </div>
+
+        <div class="vulnerable-section">
+            <div class="section-label">VULNERABLE DOM WRITE</div>
+            
+            <!-- Output Display -->
+            <div class="output-box" id="xssOutput">
+                <em style="color: #a80e0e;">No fragment detected. Add # to the URL (e.g., #Hello)</em>
+            </div>
+
+            <!-- Fragment Display -->
+            <div class="param-display">
+                <span></span> <strong>URL Fragment (#):</strong> 
+                <code id="currentParam">(none)</code>
+            </div>
+
+            <!-- Quick Test Payloads -->
+            <div class="payload-bar">
+                <span style="font-size: 0.85rem; color: #94a3b8;">Quick Test Payloads:</span>
+                <a href="#Hello+World" class="payload-btn">Hello World</a>
+                <a href="#%3Cimg%20src=x%20onerror=alert('XSS')%3E" class="payload-btn danger">img onerror</a>
+                <a href="#%3Csvg%20onload=alert(1)%3E" class="payload-btn danger">svg onload</a>
+                <a href="#%3Cimg%20src=x%20onerror=alert(document.cookie)%3E" class="payload-btn danger">Cookie Theft</a>
+                <a href="#" class="payload-btn">Clear</a>
+            </div>
+
+            <!-- User Input Field -->
+            <div class="comment-form">
+                <label style="color: var(--muted); font-size: 14px;">Or type your own fragment:</label>
+                <input type="text" id="userInput" placeholder="Type XSS payload here...">
+                <button onclick="updateFragment()" class="btn-info">Update Fragment</button>
+            </div>
+
+            <!-- Current URL Display -->
+            <div class="storage-info">
+                <strong>Current URL:</strong> 
+                <code id="currentUrl" style="word-break: break-all;"></code>
+            </div>
+
+            <!-- Hints -->
+            <details class="hint-box">
+                <summary>Hints (click to expand)</summary>
+                <ul>
+                    <li>The vulnerable sink is: <code>document.write(userInput)</code></li>
+                    <li>DOM-based XSS happens entirely in the browser</li>
+                    <li>Try: <code>#&lt;img src=x onerror=alert(1)&gt;</code></li>
+                    <li>Try: <code>#&lt;svg onload=alert(document.doindex)&gt;</code></li>
+                    <li>The fragment (#) is never sent to the server!</li>
+                </ul>
+            </details>
+        </div>
+
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+        
+        <div class="solution-panel" id="solutionPanel">
+            <h3>Solution & Explanation</h3>
+            
+            <p style="color: var(--muted); font-size: 14px;"><strong>Working Payloads:</strong></p>
+            <ul>
+                <li><code>#&lt;img src=x onerror=alert('XSS')&gt;</code> — Image error event</li>
+                <li><code>#&lt;svg onload=alert(1)&gt;</code> — SVG onload</li>
+                <li><code>#&lt;body onload=alert(document.cookie)&gt;</code> — Body onload</li>
+                <li><code>#&lt;input onfocus=alert(1) autofocus&gt;</code> — Input autofocus</li>
+            </ul>
+            
+            <p style="color: var(--muted); font-size: 14px; margin-top: 15px;">
+                <strong>Why it works:</strong> The app reads <code>window.location.hash</code> and passes it 
+                directly to <code>document.write()</code>. The browser executes any HTML/JS injected in the fragment.
+            </p>
+            
+            <h4 style="color: #fff; margin-top: 20px;">Vulnerable Code:</h4>
+            <pre>// VULNERABLE: Reads fragment and writes to DOM unsafely
+function displayFragment() {
+    const fragment = window.location.hash.substring(1);
+    const decoded = decodeURIComponent(fragment);
+    
+    if (decoded) {
+        // DANGER: document.write with user input!
+        document.getElementById('output').innerHTML = decoded;
+        // OR: document.write(decoded);
+    }
+}</pre>
+            
+            <h4 style="color: #fff; margin-top: 20px;">Fix (Secure Code):</h4>
+            <pre>// FIX 1: Use textContent instead of innerHTML
+document.getElementById('output').textContent = decoded;
+
+// FIX 2: Escape HTML before inserting
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+document.getElementById('output').innerHTML = escapeHtml(decoded);
+
+// FIX 3: Avoid document.write entirely
+// Never use document.write() with user input!</pre>
+            
+            <h4 style="color: #fff; margin-top: 20px;">DOM-based XSS vs Other Types:</h4>
+            <ul>
+                <li><strong>Reflected XSS:</strong> Payload in URL query string, reflected by server</li>
+                <li><strong>Stored XSS:</strong> Payload saved in database, served to all users</li>
+                <li><strong>DOM-based XSS:</strong> Payload in URL fragment (#), processed by client-side JS only</li>
+            </ul>
+            
+            <hr>
+            
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab2.html'">
+            <span class="btn-icon">&#8592;</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab4.html'">
+            Next Lab <span class="btn-icon">&#8594;</span>
+        </button>
+    </div>
+</div>
+
+<script>
+    const xssOutput = document.getElementById('xssOutput');
+    const currentParam = document.getElementById('currentParam');
+    const currentUrl = document.getElementById('currentUrl');
+    const userInput = document.getElementById('userInput');
+
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = 'Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = 'Hide Solution & Fix';
+        }
+    }
+
+    // DOM-based XSS - Vulnerable function
+    function displayFragment() {
+        // Get fragment from URL (#)
+        const fragment = window.location.hash.substring(1);
+        
+        // Update URL display
+        currentUrl.textContent = window.location.href;
+        
+        if (fragment) {
+            try {
+                const decoded = decodeURIComponent(fragment);
+                currentParam.textContent = decoded;
+                
+                // VULNERABLE: innerHTML with decoded fragment!
+                xssOutput.innerHTML = `<strong style="color: #6c5ce7;">Fragment content:</strong><br><code style="display:block; margin-top: 8px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; color: #e0e0e0;">${decoded}</code>`;
+            } catch (e) {
+                currentParam.textContent = '(invalid encoding)';
+                xssOutput.innerHTML = '<em style="color: #a80e0e;">Invalid URL encoding in fragment.</em>';
+            }
+        } else {
+            currentParam.textContent = '(none)';
+            xssOutput.innerHTML = '<em style="color: #a80e0e;">No fragment detected. Add # to the URL (e.g., #Hello)</em>';
+        }
+    }
+
+    // Update fragment from user input
+    function updateFragment() {
+        const input = userInput.value.trim();
+        if (input) {
+            window.location.hash = encodeURIComponent(input);
+            userInput.value = '';
+        }
+    }
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', displayFragment);
+    
+    // Also update when user clicks links (poll for changes)
+    let lastHash = window.location.hash;
+    setInterval(function() {
+        if (window.location.hash !== lastHash) {
+            lastHash = window.location.hash;
+            displayFragment();
+        }
+    }, 100);
+
+    // Initial display
+    displayFragment();
+    
+    console.log("DOM-based XSS Lab Ready — Try adding #<img src=x onerror=alert(1)>");
+</script>
+</body>
+</html>

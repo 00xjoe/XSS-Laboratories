@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #5: View Profile</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Stored XSS - Profile Viewer</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">🔴 VULNERABLE - Stored XSS</div>
+        <h2 style="color: #facc15;">Lab #5: User Profile</h2>
+        <p class="subtitle">Profile displays stored data - XSS executes here!</p>
+
+        <div class="description">
+            This page <strong>displays user profile data</strong> stored in <code>localStorage</code>. 
+            The bio field is rendered using <code>innerHTML</code> without sanitization, allowing 
+            any XSS payload saved from the <a href="lab5-edit.html" style="color: var(--accent);">profile editor</a> 
+            to execute here.<br><br>
+            <strong> If you see an alert box, the XSS worked!</strong>
+        </div>
+
+        <!-- Profile Display -->
+        <div class="vulnerable-section">
+            <div class="section-label" style="color: #ef4444;">🔴 VULNERABLE PROFILE DISPLAY</div>
+            
+            <!-- Profile Card -->
+            <div class="comment-card" style="margin-bottom: 20px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 200px; height: 200px; margin: 0 auto 10px; border-radius: 50%; overflow: hidden; border: 2px solid #ff4d4d;">
+                        <img src="/images/users-image.png" alt="user-avatar" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                    </div>
+                    <h2 id="usernameDisplay" style="color: #fff;">No Profile</h2>
+                    <p id="locationDisplay" style="color: var(--muted); font-size: 14px;">Location: Unknown</p>
+                </div>
+
+                <div class="storage-info" style="margin-bottom: 15px;">
+                    <strong> Bio:</strong>
+                </div>
+                <!-- VULNERABLE: Bio rendered with innerHTML -->
+                <div id="bioDisplay" class="comment-content" style="min-height: 60px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <em style="color: var(--muted);">No bio yet. <a href="lab5-edit.html" style="color: var(--accent);">Edit profile</a> to add one.</em>
+                </div>
+
+                <div class="storage-info" style="margin-top: 15px;">
+                    <strong> Website:</strong> 
+                    <a id="websiteLink" href="#" target="_blank" style="color: var(--accent);">No website set</a>
+                </div>
+
+                <div class="storage-info" style="margin-top: 10px;">
+                    <strong> Last Updated:</strong> 
+                    <span id="lastUpdated" style="color: var(--muted);">Never</span>
+                </div>
+            </div>
+
+            <!-- XSS Detector -->
+            <div id="xssDetected" class="hint-box" style="display: none; border-color: rgba(255, 71, 87, 0.5);">
+                <summary style="color: var(--danger);">🚨 XSS PAYLOAD DETECTED!</summary>
+                <p style="color: var(--danger); font-size: 13px;">
+                    A script tag or event handler was detected in the profile bio. 
+                    In a real attack, this could steal cookies, redirect users, or deface the page.
+                </p>
+            </div>
+
+            <!-- Buttons -->
+            <div class="button-group" style="margin-top: 20px;">
+                <button onclick="window.location.href='lab5-edit.html'" class="btn-warning">
+                    Edit Profile
+                </button>
+                <button onclick="location.reload()" class="btn-info">
+                    Reload Profile
+                </button>
+            </div>
+        </div>
+
+        <!-- Solution Toggle -->
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+        
+        <div class="solution-panel" id="solutionPanel">
+            <h3>✅ Solution & Explanation</h3>
+            
+            <h4>What Just Happened?</h4>
+            <p style="color: var(--muted); font-size: 13px; margin-bottom: 15px;">
+                The XSS payload you saved in the profile editor was retrieved from localStorage 
+                and injected directly into this page via <code>innerHTML</code>. The browser 
+                executed the malicious code because the application didn't sanitize the input.
+            </p>
+
+            <h4>Attack Impact (Real-World):</h4>
+            <ul>
+                <li>🍪 <strong>Cookie Theft:</strong> Attacker steals session cookies</li>
+                <li>🔑 <strong>Account Takeover:</strong> Attacker impersonates victim</li>
+                <li>📧 <strong>Phishing:</strong> Fake login forms steal credentials</li>
+                <li>🦠 <strong>Malware Distribution:</strong> Redirect to malicious sites</li>
+                <li>💣 <strong>Defacement:</strong> Page content modified</li>
+            </ul>
+
+            <h4 style="color: #fff; margin-top: 20px;">Vulnerable Code:</h4>
+            <pre>// VULNERABLE: Reads from localStorage, injects with innerHTML
+function displayProfile() {
+    const stored = localStorage.getItem('xss_lab_profile');
+    if (stored) {
+        const profile = JSON.parse(stored);
+        
+        // DANGER: innerHTML with user data!
+        document.getElementById('bioDisplay').innerHTML = profile.bio;
+        
+        // Also vulnerable: href can use javascript: protocol
+        document.getElementById('websiteLink').href = profile.website;
+    }
+}</pre>
+
+            <h4 style="color: #fff; margin-top: 20px;">🛡️ Secure Code Fix:</h4>
+            <pre>// FIX 1: textContent for bio
+document.getElementById('bioDisplay').textContent = profile.bio;
+
+// FIX 2: Validate website URL
+function isValidUrl(url) {
+    try {
+        const u = new URL(url);
+        return u.protocol === 'https:' || u.protocol === 'http:';
+    } catch {
+        return false;
+    }
+}
+if (isValidUrl(profile.website)) {
+    document.getElementById('websiteLink').href = profile.website;
+}
+
+// FIX 3: DOMPurify for rich text bios
+document.getElementById('bioDisplay').innerHTML = 
+    DOMPurify.sanitize(profile.bio, {
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a'],
+        ALLOWED_ATTR: ['href']
+    });</pre>
+            
+            <hr>
+            <p style="color: #555; font-size: 12px;">🛡️ This lab runs entirely in your browser — safe for educational purposes.</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab4.html'">
+            <span class="btn-icon">←</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab6.html'">
+            Next Lab <span class="btn-icon">→</span>
+        </button>
+    </div>
+
+    <div class="footer">
+        <p>⚠️ Educational purposes only. Never deploy vulnerable code to production.</p>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'xss_lab_profile';
+
+    // ============ VULNERABLE DISPLAY FUNCTION ============
+    function displayProfile() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        
+        if (stored) {
+            const profile = JSON.parse(stored);
+            
+            // Update basic fields (safe with textContent)
+            document.getElementById('usernameDisplay').textContent = profile.username || 'Anonymous';
+            document.getElementById('locationDisplay').textContent = profile.location || 'Unknown';
+            document.getElementById('lastUpdated').textContent = 
+                new Date(profile.lastUpdated).toLocaleString() || 'Unknown';
+            
+            // VULNERABLE: Bio rendered with innerHTML!
+            if (profile.bio) {
+                document.getElementById('bioDisplay').innerHTML = profile.bio;
+                
+                // Check for XSS payloads
+                detectXss(profile.bio);
+            }
+            
+            // VULNERABLE: Website can use javascript: protocol
+            if (profile.website && profile.website !== '#') {
+                const websiteLink = document.getElementById('websiteLink');
+                websiteLink.href = profile.website; // Could be javascript:alert(1)
+                websiteLink.textContent = profile.website;
+            }
+            
+            console.log('👤 Profile loaded from localStorage');
+            console.log('⚠️ Bio rendered with innerHTML - XSS possible!');
+        } else {
+            console.log('📭 No profile found in localStorage');
+        }
+    }
+
+    // Detect potential XSS in bio
+    function detectXss(bio) {
+        const xssPatterns = [
+            /<script/i,
+            /onerror\s*=/i,
+            /onload\s*=/i,
+            /onmouseover\s*=/i,
+            /javascript:/i,
+            /<iframe/i,
+            /<embed/i,
+            /<object/i
+        ];
+        
+        let detected = false;
+        for (const pattern of xssPatterns) {
+            if (pattern.test(bio)) {
+                detected = true;
+                break;
+            }
+        }
+        
+        if (detected) {
+            document.getElementById('xssDetected').style.display = 'block';
+            console.warn('🚨 XSS payload detected in profile bio!');
+        }
+    }
+
+    // Solution toggle
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = '📖 Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = '📖 Hide Solution & Fix';
+        }
+    }
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', function() {
+        displayProfile();
+        console.log('🛡️ Stored XSS Profile Viewer Ready');
+        console.log('👀 Check if any XSS payloads execute...');
+    });
+</script>
+</body>
+</html>

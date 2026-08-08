@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #7: Reflected XSS via Referer Header</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Reflected XSS Demonstration</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">VULNERABLE - Reflected XSS</div>
+        <h2 style="color: #facc15;">Lab #7: Reflected XSS via Referer / User-Agent Header</h2>
+        <p class="subtitle">"You came here from..." — a widget that trusts headers it never asked to be trustworthy</p>
+
+        <div class="description">
+            <p>
+                Some sites show a friendly "Recently visited from: <em>example.com</em>" or
+                "Detected browser: <em>Chrome</em>" widget, built server-side from the
+                <code>Referer</code> / <code>User-Agent</code> HTTP headers of the request.
+                These values feel like "browser metadata" rather than "user input," so backends
+                often echo them straight into an HTML response without sanitization.
+            </p>
+            <p>
+                That trust is misplaced. <strong>Both headers are fully attacker-controlled.</strong>
+                Referer is just the URL of the previous page — an attacker can host a page at any
+                URL they like and link a victim to your site from it. User-Agent can be edited
+                freely by anyone using browser dev tools, curl, or — as in this lab — an
+                intercepting proxy like Burp Suite. Neither is authenticated or validated by
+                the browser in any way; the browser just reports whatever it's configured (or
+                told) to report.
+            </p>
+        </div>
+
+        <div class="vulnerable-section">
+            <div class="section-label">VULNERABLE COMPONENT</div>
+
+            <div style="background:#1a1a0d; border:1px solid #4a3c00; border-radius:6px; padding:12px; margin-bottom:14px; font-size:0.92em;">
+                <strong>Requires the companion server (see below the code block) running on
+                <code>http://localhost:3000</code></strong>, with your browser's proxy pointed at
+                Burp. Browsers block JavaScript from setting the real <code>User-Agent</code> /
+                <code>Referer</code> headers directly — you have to edit them in Burp's
+                <strong>Intercept</strong> tab after the request leaves the browser.
+            </div>
+
+            <p style="margin-bottom:12px;">
+                Click the button below to send a real request. Turn on <strong>Burp Proxy ->
+                Intercept</strong> first, then:
+            </p>
+            <ol style="margin-left:20px; margin-bottom:12px; line-height:1.8;">
+                <li>Click "Send Tracking Request"</li>
+                <li>In Burp, find the intercepted <code>GET /track-visit</code> request</li>
+                <li>Edit the <code>User-Agent</code> or <code>Referer</code> header value to:<br>
+                    <code>&lt;img src=x onerror=alert('XSS')&gt;</code></li>
+                <li>Click <strong>Forward</strong></li>
+                <li>Watch the response render below — unsanitized, straight from the header</li>
+            </ol>
+
+            <button class="btn-success" onclick="sendTrackingRequest()">
+                Send Tracking Request
+            </button>
+
+            <div id="referrerWidget" style="padding:10px; background:#1e1e1e; border-radius:6px; color:#eee; margin-top:12px; min-height:24px;">
+                (no request sent yet)
+            </div>
+
+            <pre style="margin-top:16px; background:#111; padding:12px; border-radius:6px; overflow-x:auto; color:#f88;"><code>// VULNERABLE CODE (frontend - client_lab7.js equivalent, inlined below)
+async function sendTrackingRequest() {
+    const res = await fetch('http://localhost:3000/track-visit');
+    const html = await res.text();
+    document.getElementById('referrerWidget').innerHTML = html;   // <-- unsanitized
+}
+
+// VULNERABLE CODE (backend - server.js, Node/Express)
+app.get('/track-visit', (req, res) => {
+    const ua  = req.headers['user-agent'] || '';
+    const ref = req.headers['referer']    || '(none)';
+    res.set('Access-Control-Allow-Origin', '*');
+    res.send(
+        '&lt;p&gt;Detected browser: ' + ua + '&lt;/p&gt;' +
+        '&lt;p&gt;Recently visited from: ' + ref + '&lt;/p&gt;'
+    );   // <-- headers written directly into HTML, no escaping
+});</code></pre>
+
+            <details style="margin-top:14px;">
+                <summary style="cursor:pointer; color:#facc15;">Companion server code (server.js) — run with <code>node server.js</code></summary>
+                <pre style="margin-top:10px; background:#111; padding:12px; border-radius:6px; overflow-x:auto; color:#ccc;"><code>const http = require('http');
+
+http.createServer((req, res) => {
+    if (req.url === '/track-visit') {
+        const ua  = req.headers['user-agent'] || '';
+        const ref = req.headers['referer']    || '(none)';
+        res.writeHead(200, {
+            'Content-Type': 'text/html',
+            'Access-Control-Allow-Origin': '*'
+        });
+        res.end(
+            '&lt;p&gt;Detected browser: ' + ua + '&lt;/p&gt;' +
+            '&lt;p&gt;Recently visited from: ' + ref + '&lt;/p&gt;'
+        );
+        return;
+    }
+    res.writeHead(404); res.end();
+}).listen(3000, () => console.log('Vulnerable server on http://localhost:3000'));</code></pre>
+            </details>
+        </div>
+
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+        
+        <div class="solution-panel" id="solutionPanel">
+            <h3 style="color:#4ade80;">The Fix</h3>
+            <p>
+                Treat every HTTP header the same way you'd treat a form field: as untrusted,
+                attacker-controlled input. Never write a header value into the DOM or into an
+                HTML response without proper handling:
+            </p>
+            <pre style="background:#111; padding:12px; border-radius:6px; overflow-x:auto; color:#4ade80;"><code>// FIXED CODE (client-side)
+function showReferrer() {
+    const ref = document.referrer || '(direct visit — no referrer)';
+    document.getElementById('referrerWidget').textContent =
+        'Recently visited from: ' + ref;   // safe: rendered as text, not parsed
+}
+
+// FIXED CODE (server-side, Node/Express-style)
+const escapeHtml = require('escape-html'); // or your framework's built-in escaper
+app.get('/', (req, res) => {
+    const ua = escapeHtml(req.headers['user-agent'] || '');
+    res.send('&lt;p&gt;Detected browser: ' + ua + '&lt;/p&gt;');
+});</code></pre>
+            <p>Additional hardening for header-driven features:</p>
+            <ul style="margin-left:20px; line-height:1.8;">
+                <li>Never assume a header is "just metadata" — Referer, User-Agent, X-Forwarded-For,
+                    Origin, and every other header are all fully editable by the client sending the request.</li>
+                <li>If you only need the referrer's <em>doindex</em> for display (e.g. "via google.com"),
+                    parse it with the URL API and show only the validated hostname — never the raw string.</li>
+                <li>Use your templating engine's default auto-escaping for server-rendered pages instead
+                    of hand-building HTML strings from request data.</li>
+                <li>Set a strict <code>Content-Security-Policy</code> as defense in depth against
+                    any sanitization gaps.</li>
+                <li>Remember <code>document.referrer</code> can also be empty or spoofed to
+                    look "clean" by an attacker using a <code>rel="noreferrer"</code> link
+                    on the referring page — don't rely on it for any security decisions.</li>
+            </ul>
+
+            <button class="btn-success" style="width:100%; margin-top:12px;" onclick="runFixedDemo()">
+                Try the Fixed Version
+            </button>
+            <div id="fixedResult" style="min-height:24px; margin-top:10px; padding:10px; background:#1e1e1e; border-radius:6px; color:#eee;"></div>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab6.html'">
+            <span class="btn-icon">&#8592;</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab8.html'">
+            Next Lab <span class="btn-icon">&#8594;</span>
+        </button>
+    </div>
+
+    <div class="footer">
+        
+    </div>
+</div>
+
+<script>
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = 'Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = 'Hide Solution & Fix';
+        }
+    }
+
+    // --- Vulnerable demo: REAL network request, so Burp actually sees it ---
+    // Note: fetch() cannot set User-Agent/Referer itself (browser-forbidden headers).
+    // Turn on Burp Intercept, click the button, then edit the header value in Burp
+    // before forwarding - that's what makes this a genuine header-injection test.
+    async function sendTrackingRequest() {
+        const widget = document.getElementById('referrerWidget');
+        widget.textContent = 'Sending request... (check Burp Intercept)';
+        try {
+            const res = await fetch('http://localhost:3000/track-visit');
+            const html = await res.text();
+            widget.innerHTML = html;   // vulnerable sink: server response inserted raw
+        } catch (err) {
+            widget.textContent =
+                'Request failed - is the companion server running on localhost:3000? (' + err.message + ')';
+        }
+    }
+
+    // --- Fixed demo (uses textContent instead of innerHTML) ---
+    function runFixedDemo() {
+        const maliciousResponse =
+            "<p>Detected browser: <img src=x onerror=alert('XSS')></p>";
+        document.getElementById('fixedResult').textContent = maliciousResponse;
+    }
+</script>
+</body>
+</html>

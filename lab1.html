@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #1: GET Parameter Reflection</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- Header -->
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Reflected XSS Vulnerability Demonstration</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <!-- ==================== LAB CARD ==================== -->
+    <div class="lab-card">
+        <div class="badge">🔴 VULNERABLE - Reflected XSS</div>
+        <h2 style="color: #facc15; margin-bottom: 0.5rem;">GET Parameter Reflection</h2>
+        <p class="subtitle">Reflected XSS via innerHTML injection</p>
+
+        <div class="description">
+            The page reads the <code>?q=</code> parameter from the URL and injects it directly into the DOM using <code>innerHTML</code> — <strong style="color: var(--danger);">NO sanitization applied</strong>.<br><br>
+            <strong>🎯 Goal:</strong> Execute JavaScript (pop an alert box) by crafting a malicious URL parameter.
+        </div>
+
+        <!-- Vulnerable Section -->
+        <div class="vulnerable-section">
+            <div class="section-label" style="color: #ef4444;">🔴 VULNERABLE REFLECTION POINT</div>
+
+            <!-- Vulnerable Target -->
+            <div class="output-box" id="xssOutput">
+                <em style="color: #a80e0e;">No payload yet. Add ?q=... to the URL.</em>
+            </div>
+
+            <!-- Current Parameter -->
+            <div class="param-display">
+                <span>📝</span> <strong>Input Value ?q=</strong> <code id="currentParam" style="color: #feca57;">(none)</code>
+            </div>
+
+            <!-- Quick Test Links -->
+            <div class="payload-bar">
+                <span style="font-size: 0.8rem; color: #94a3b8;">Quick Test </span>
+                <a href="?q=Hello+World" class="payload-btn"> Hello World</a>
+
+                
+                <a href="?" class="payload-btn"> Clear</a>
+            </div>
+
+            <!-- Hints -->
+            
+        </div>
+
+        <!-- Solution Section -->
+        <div style="text-align: center; margin: 2rem 0;">
+            <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width: 100%;">
+                📖 Show Solution & Fix
+            </button>
+        </div>
+        
+        <div class="solution-panel" id="solutionPanel">
+            <h3>✅ Solution & Explanation</h3>
+            
+            <p style="color: var(--muted); font-size: 13px;"><strong>Working Payloads:</strong></p>
+            <ul>
+                <li><code>?q=&lt;img src=x onerror=alert('XSS')&gt;</code> — Image error event</li>
+                <li><code>?q=&lt;body onload=alert(document.cookie)&gt;</code> — Body onload</li>
+                <li><code>?q=&lt;svg onload=alert(1)&gt;</code> — SVG onload</li>
+                <li><code>?q=&lt;input onfocus=alert(1) autofocus&gt;</code> — Input autofocus</li>
+            </ul>
+            
+            <p style="color: var(--muted); font-size: 13px; margin-top: 15px;">
+                <strong>🔍 Why it works:</strong> The app takes <code>?q=...</code> and uses <code>innerHTML</code> without escaping. The browser interprets any HTML/JS injected.
+            </p>
+            
+            <h4 style="color: #fff; margin-top: 20px;">Vulnerable Code:</h4>
+            <pre>// Vulnerable JavaScript:
+const query = new URLSearchParams(location.search).get('q');
+document.getElementById('output').innerHTML = query;</pre>
+            
+            <h4 style="color: #fff; margin-top: 20px;">🛡️ Fix (Secure Code):</h4>
+            <pre>// Option 1: Use textContent
+document.getElementById('output').textContent = query;
+
+// Option 2: Escape HTML entities
+function escapeHtml(str) {
+    return str.replace(/[&<>]/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;'
+    }[m]));
+}
+document.getElementById('output').innerHTML = escapeHtml(query);</pre>
+            
+            <hr>
+            <p style="color: var(--muted); font-size: 13px; margin-top: 15px;">
+                <strong> Key Takeaways:</strong><br>
+                Always sanitize or escape user input before rendering it in the DOM. Avoid using <code>innerHTML</code> with untrusted data.
+            
+        </div>
+    </div>
+
+    <!-- Button Container -->
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab9.html'">
+            <span class="btn-icon">←</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab2.html'">
+            Next Lab <span class="btn-icon">→</span>
+        </button>
+        
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>⚠️ This lab is for educational purposes only. Never deploy vulnerable code to production.</p>
+        <p>Learn to identify and fix XSS vulnerabilities to build secure applications.</p>
+    </div>
+</div>
+
+<script>
+    const xssOutput = document.getElementById('xssOutput');
+    const currentParamSpan = document.getElementById('currentParam');
+    const solutionBtn = document.getElementById('solutionBtn');
+    const solutionPanel = document.getElementById('solutionPanel');
+
+    function getQueryParam() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('q');
+    }
+
+    function refreshVulnerableOutput() {
+        const qValue = getQueryParam();
+        
+        if (qValue !== null && qValue !== undefined) {
+            currentParamSpan.textContent = decodeURIComponent(qValue);
+            // VULNERABLE SINK: innerHTML with unescaped user input !!! 
+            xssOutput.innerHTML = `<strong style="color: #6c5ce7;">📎 Reflected output:</strong><br><code style="display:block; margin-top: 8px; background: rgba(0,0,0,0.4); padding: 20px; border-radius: 8px; color: #e0e0e0;">${qValue}</code>`;
+        } else {
+            currentParamSpan.textContent = '(none)';
+            xssOutput.innerHTML = '<em style="color: #a80e0e;">No ?q= parameter. Add ?q=&lt;img src=x onerror=alert(1)&gt; to the URL.</em>';
+        }
+    }
+
+    // Toggle solution panel
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = '📖 Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = '📖 Hide Solution & Fix';
+        }
+    }
+
+    window.addEventListener('popstate', refreshVulnerableOutput);
+
+    let lastUrl = window.location.href;
+    setInterval(function() {
+        if (window.location.href !== lastUrl) {
+            lastUrl = window.location.href;
+            refreshVulnerableOutput();
+        }
+    }, 100);
+
+    refreshVulnerableOutput();
+    
+    console.log("🛡️ XSS Lab #1 Ready — Try: ?q=<img src=x onerror=alert(1)>");
+</script>
+
+</body>
+</html>

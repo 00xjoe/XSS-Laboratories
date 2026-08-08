@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab #4: Reflected XSS into Attribute</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>XSS Security Lab</h1>
+        <p class="tagline">Reflected XSS - Attribute Injection Demonstration</p>
+        <p class="author">Test Your Knowledge</p>
+    </div>
+
+    <div class="lab-card">
+        <div class="badge">VULNERABLE - Reflected XSS</div>
+        <h2 style="color: #facc15;">Lab #4: Reflected XSS into Attribute</h2>
+        <p class="subtitle">Angle Brackets HTML-Encoded - Break Out of Attribute</p>
+
+        <div class="description">
+            This lab demonstrates a <strong>Reflected XSS vulnerability</strong> where user input is reflected 
+            inside an HTML attribute value. <strong>Angle brackets <code>&lt; &gt;</code> are HTML-encoded</strong>, 
+            so you cannot inject new HTML tags. Instead, you must <strong>break out of the attribute</strong> 
+            and inject an event handler.<br><br>
+            <strong>Goal:</strong> Inject a payload that breaks out of the quoted attribute and executes 
+            <code>alert(1)</code> using an event handler like <code>onmouseover</code>.
+        </div>
+
+        <!-- Search Form -->
+        <div class="vulnerable-section">
+            <div class="section-label">VULNERABLE SEARCH - ATTRIBUTE INJECTION</div>
+            
+            <form class="comment-form" onsubmit="return false;">
+                <label style="color: var(--muted); font-size: 14px;">Search Blog Posts:</label>
+                <input type="text" id="searchInput" placeholder="Search..." value="">
+                <button onclick="doSearch()">Search</button>
+            </form>
+
+            <!-- Search Result Display -->
+            <div class="output-box" id="searchResult">
+                <em style="color: #a80e0e;">Enter a search term above.</em>
+            </div>
+
+            <!-- Current Search Parameter -->
+            <div class="param-display">
+                <span>Search Query:</span> 
+                <code id="currentSearch">(none)</code>
+            </div>
+
+            <!-- Quick Test Payloads -->
+            <div class="payload-bar">
+                <span style="font-size: 0.85rem; color: #94a3b8;">Quick Test Payloads (click or paste):</span>
+                <button class="payload-btn" onclick="testPayload('test123')">
+                    Normal Text
+                </button>
+                <button class="payload-btn danger" onclick="testPayload('&quot;onmouseover=&quot;alert(1)')">
+                    onmouseover
+                </button>
+                <button class="payload-btn danger" onclick="testPayload('&quot;onfocus=&quot;alert(1)&quot;autofocus=&quot;')">
+                    onfocus autofocus
+                </button>
+                <button class="payload-btn danger" onclick="testPayload('&quot;onclick=&quot;alert(1)')">
+                    onclick
+                </button>
+            </div>
+
+            <!-- Advanced Payloads -->
+            <div class="payload-bar">
+                <span style="font-size: 0.85rem; color: #94a3b8;">More Event Handlers:</span>
+                <button class="payload-btn danger" onclick="testPayload('&quot;onload=&quot;alert(1)')">
+                    onload
+                </button>
+                <button class="payload-btn danger" onclick="testPayload('&quot;onerror=&quot;alert(1)')">
+                    onerror
+                </button>
+                <button class="payload-btn danger" onclick="testPayload('&quot;onscroll=&quot;alert(1)')">
+                    onscroll
+                </button>
+                <button class="payload-btn" onclick="clearSearch()">
+                    Clear
+                </button>
+            </div>
+
+            <!-- URL Display -->
+            <div class="storage-info">
+                <strong>Shareable URL:</strong> 
+                <code id="shareUrl" style="word-break: break-all;"></code>
+                <br><small style="color: var(--muted);">Copy this URL to share the XSS with others!</small>
+            </div>
+
+            <!-- Hint Box -->
+            <details class="hint-box">
+                <summary>Hints (click to expand)</summary>
+                <ul>
+                    <li>Angle brackets <code>&lt; &gt;</code> are encoded, so <code>&lt;script&gt;</code> won't work</li>
+                    <li>Look at the page source - your input is inside a <strong>quoted attribute</strong></li>
+                    <li>Try to break out of the quote with <code>"</code> and add an event handler</li>
+                    <li>Payload pattern: <code>"onmouseover="alert(1)</code></li>
+                    <li>Try different event handlers: <code>onfocus</code>, <code>onclick</code>, <code>onload</code></li>
+                    <li>Some events need user interaction (mouseover, click, focus)</li>
+                </ul>
+            </details>
+
+            <!-- Current HTML Source -->
+            <details class="hint-box" style="margin-top: 10px;">
+                <summary>View Rendered HTML (click to expand)</summary>
+                <pre id="htmlSource" style="font-size: 11px; color: var(--muted); overflow-x: auto; padding: 10px;"></pre>
+            </details>
+        </div>
+
+        <!-- Solution Toggle -->
+        <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width:100%;">
+            Show Solution & Fix
+        </button>
+        
+        <!-- Solution Panel -->
+        <div class="solution-panel" id="solutionPanel">
+            <h3>Solution & Explanation</h3>
+            
+            <h4>Why This Works:</h4>
+            <p style="color: var(--muted); font-size: 13px; margin-bottom: 15px;">
+                The application takes user input and places it directly inside an HTML attribute value. 
+                While angle brackets are encoded (preventing new tag injection), 
+                <strong>quotes are not escaped</strong>, allowing you to break out of the attribute 
+                and inject event handlers.
+            </p>
+            
+            <h4>Working Payloads:</h4>
+            <ul>
+                <li><code>"onmouseover="alert(1)</code> — Hover mouse over search box</li>
+                <li><code>"onfocus="alert(1)"autofocus="</code> — Auto-triggers when page loads</li>
+                <li><code>"onclick="alert(1)</code> — Click the search box</li>
+                <li><code>"onload="alert(1)</code> — Fires on element load</li>
+            </ul>
+
+            <h4 style="color: #fff; margin-top: 20px;">Vulnerable Code (What the Server Returns):</h4>
+            <pre>&lt;!-- User input reflected inside attribute --&gt;
+&lt;input type="text" value="USER_INPUT_HERE"&gt;
+
+&lt;!-- With payload: "onmouseover="alert(1) --&gt;
+&lt;input type="text" value=""onmouseover="alert(1)"&gt;
+
+&lt;!-- Browser interprets as: --&gt;
+&lt;input type="text" value="" onmouseover="alert(1)"&gt;
+&lt;!--                        ^^^^ New event handler! ^^^^    --&gt;</pre>
+
+            <h4 style="color: #fff; margin-top: 20px;">Fix (Secure Code):</h4>
+            <pre>// FIX 1: HTML Entity Encode ALL special characters
+function escapeAttribute(unsafe) {
+    return unsafe
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')   // Encode double quotes
+        .replace(/'/g, '&#x27;')  // Encode single quotes
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// Server-side (PHP example)
+$safe_value = htmlspecialchars($user_input, ENT_QUOTES, 'UTF-8');
+echo '&lt;input type="text" value="' . $safe_value . '"&gt;';
+
+// FIX 2: Use template engines with auto-escaping
+// React: &lt;input value={userInput} /&gt; (auto-escapes)
+// Vue: &lt;input :value="userInput" /&gt; (auto-escapes)</pre>
+
+            <h4>Common Event Handlers for XSS:</h4>
+            <ul>
+                <li><code>onmouseover</code> — Mouse hovers element</li>
+                <li><code>onfocus</code> — Element receives focus</li>
+                <li><code>onclick</code> — Element clicked</li>
+                <li><code>onload</code> — Element finishes loading</li>
+                <li><code>onerror</code> — Error occurs on element</li>
+                <li><code>onscroll</code> — Element is scrolled</li>
+                <li><code>oninput</code> — User types in input</li>
+            </ul>
+            
+            <hr>
+            <p style="color: #555; font-size: 12px;">This lab runs entirely in your browser — safe for educational purposes.</p>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="button-container">
+        <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+            <span class="btn-icon">-</span> Back to Home
+        </button>
+        <button class="nav-btn btn-prev" onclick="window.location.href='lab3.html'">
+            <span class="btn-icon">&#8592;</span> Previous Lab
+        </button>
+        <button class="nav-btn btn-next" onclick="window.location.href='lab5-view.html'">
+            Next Lab <span class="btn-icon">&#8594;</span>
+        </button>
+    </div>
+
+    <div class="footer">
+        <p>Educational purposes only. Never deploy vulnerable code to production.</p>
+    </div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('searchInput');
+    const searchResult = document.getElementById('searchResult');
+    const currentSearch = document.getElementById('currentSearch');
+    const shareUrl = document.getElementById('shareUrl');
+    const htmlSource = document.getElementById('htmlSource');
+
+    // ============ VULNERABLE SEARCH FUNCTION ============
+    function doSearch() {
+        const query = searchInput.value.trim();
+        
+        if (query) {
+            // Update URL with search parameter (for sharing)
+            const url = new URL(window.location);
+            url.searchParams.set('search', query);
+            window.history.pushState({}, '', url);
+            
+            // Update displays
+            updateDisplay(query);
+        }
+    }
+
+    // VULNERABLE: Reflects user input into an attribute
+    function updateDisplay(query) {
+        currentSearch.textContent = query;
+        
+        // Update share URL
+        const url = new URL(window.location);
+        url.searchParams.set('search', query);
+        shareUrl.textContent = url.toString();
+        
+        // VULNERABLE CODE:
+        // Angle brackets are encoded, but quotes are NOT!
+        // This allows breaking out of the attribute
+        const encodedQuery = query
+            .replace(/</g, '&lt;')    // Encode <
+            .replace(/>/g, '&gt;');   // Encode >
+        // NOTE: Quotes are NOT encoded - VULNERABLE!
+        
+        // Inject into attribute - DANGEROUS!
+        const html = `
+            <div style="padding: 10px;">
+                <strong style="color: #6c5ce7;">Search Results for:</strong>
+            </div>
+            <div style="padding: 10px;">
+                <input type="text" 
+                       id="reflectedInput" 
+                       value="${encodedQuery}" 
+                       placeholder="Search reflected here..."
+                       style="width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+            </div>
+            <div style="padding: 10px; color: var(--muted);">
+                <small>Hint: Check the input's value attribute in the source!</small>
+            </div>
+        `;
+        
+        // DANGEROUS: innerHTML with user input in attribute
+        searchResult.innerHTML = html;
+        
+        // Show the raw HTML source
+        htmlSource.textContent = html;
+        
+        // Auto-focus the reflected input if autofocus payload was used
+        const reflectedInput = document.getElementById('reflectedInput');
+        if (reflectedInput) {
+            // This helps onfocus payloads work automatically
+            setTimeout(() => {
+                if (query.includes('autofocus')) {
+                    reflectedInput.focus();
+                }
+            }, 100);
+        }
+    }
+
+    // ============ TEST PAYLOADS ============
+    function testPayload(payload) {
+        searchInput.value = payload;
+        doSearch();
+    }
+
+    function clearSearch() {
+        searchInput.value = '';
+        window.history.pushState({}, '', window.location.pathname);
+        searchResult.innerHTML = '<em style="color: #a80e0e;">Enter a search term above.</em>';
+        currentSearch.textContent = '(none)';
+        shareUrl.textContent = window.location.href;
+        htmlSource.textContent = '';
+    }
+
+    // ============ SOLUTION TOGGLE ============
+    function toggleSolution() {
+        const panel = document.getElementById('solutionPanel');
+        const btn = document.getElementById('solutionBtn');
+        if (panel.classList.contains('show')) {
+            panel.classList.remove('show');
+            btn.textContent = 'Show Solution & Fix';
+        } else {
+            panel.classList.add('show');
+            btn.textContent = 'Hide Solution & Fix';
+        }
+    }
+
+    // ============ INITIALIZATION ============
+    window.addEventListener('DOMContentLoaded', function() {
+        // Check for search parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        
+        if (searchParam) {
+            searchInput.value = searchParam;
+            updateDisplay(searchParam);
+        }
+        
+        shareUrl.textContent = window.location.href;
+        
+        console.log('Reflected XSS into Attribute Lab Ready');
+        console.log('Try payload: "onmouseover="alert(1)');
+        console.log('Angle brackets are encoded, but quotes are not!');
+    });
+
+    // Update search on Enter key
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            doSearch();
+        }
+    });
+</script>
+</body>
+</html>

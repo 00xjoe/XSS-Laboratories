@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Lab: Stored XSS via Comment System</title>
+    <link rel="stylesheet" href="style/style_lab/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>XSS Security Lab</h1>
+            <p class="tagline">Stored XSS Vulnerability Demonstration</p>
+            <p class="author">Local Testing Environment</p>
+        </div>
+
+        <div class="lab-card">
+            <div class="badge">🔴 VULNERABLE - Stored XSS</div>
+            <h2 style="color: #facc15; margin-bottom: 1rem;">Comment System with Stored XSS</h2>
+            
+            <div class="description">
+                This lab demonstrates a <strong>Stored XSS vulnerability</strong> in a comment system. 
+                User comments are saved to <code>localStorage</code> and displayed using <code>innerHTML</code> 
+                without sanitization, allowing JavaScript payloads to execute when comments are rendered.
+            </div>
+
+            <!-- Cookie Status Display -->
+            <div class="storage-info" style="margin-bottom: 15px;">
+                <strong> Cookie Status:</strong> 
+                <span id="cookieStatus" style="color: #feca57;">Checking cookies...</span>
+                <br><small style="color: var(--muted);">Cookies set: <code id="cookieList">None</code></small>
+            </div>
+
+            <div class="vulnerable-section">
+                <div class="section-label" style="color: #ef4444;">
+                    🔴 VULNERABLE COMMENT SYSTEM
+                </div>
+                
+                <form class="comment-form" onsubmit="return false;">
+                    <input type="text" id="usernameInput" placeholder="Your name..." value="Anonymous">
+                    <textarea id="commentInput" placeholder="Write your comment here... (XSS payloads accepted!)"></textarea>
+                    <div class="button-group">
+                        <button onclick="addComment()" class="tooltip">
+                            Post Comment
+                            <span class="tooltiptext">Shortcut: Ctrl + Enter</span>
+                        </button>
+                        <button class="btn-danger" onclick="clearAllComments()">
+                            Clear All Comments
+                        </button>
+                        <button class="btn-warning" onclick="reloadPage()">
+                            Reload Page
+                        </button>
+                    </div>
+                </form>
+
+
+
+                <div class="storage-info">
+                    <strong> Storage Info:</strong> 
+                    Comments stored in <code>localStorage</code> - persist after page reload and browser restart
+                    <span class="counter" id="commentCount">(0 comments stored)</span>
+                </div>
+
+                <h3 style="margin-bottom: 1rem;">Comments:</h3>
+                <div class="comments-container" id="commentsContainer">
+                    <p style="color: #64748b;">No comments yet. Be the first to comment!</p>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 2rem 0;">
+                <button onclick="toggleSolution()" id="solutionBtn" class="btn-success" style="width: 100%;">
+                    📖 Show Solution & Fix
+                </button>
+            </div>
+
+            <div class="solution-panel" id="solutionPanel">
+                <h3>✅ Solution & Security Fix</h3>
+                
+                <h4>Why Cookie Theft Works Here:</h4>
+                <p style="color: var(--muted); font-size: 13px; margin-bottom: 15px;">
+                This lab sets demo cookies on page load. When the XSS payload executes
+                <code>alert(document.cookie)</code>, it displays all non-HttpOnly cookies.
+                This lab also demonstrates how XSS can inject a username into the page when untrusted input is inserted without proper sanitization.
+                </p>
+                <h4>Vulnerable Code (Current Implementation):</h4>
+                <pre><code>// DANGER: Using innerHTML with unsanitized user input
+function displayComments() {
+    const comments = JSON.parse(localStorage.getItem('comments')) || [];
+    const container = document.getElementById('commentsContainer');
+    
+    let html = '';
+    comments.forEach(comment => {
+        // VULNERABLE: Direct HTML injection
+        html += `&lt;div&gt;${comment.text}&lt;/div&gt;`;
+    });
+    
+    container.innerHTML = html; // XSS HERE!
+}</code></pre>
+
+                <h4>Secure Implementation (Fix):</h4>
+                <pre><code>// FIX 1: Use textContent (Recommended)
+function displayCommentsSecure() {
+    const comments = JSON.parse(localStorage.getItem('comments')) || [];
+    const container = document.getElementById('commentsContainer');
+    container.innerHTML = '';
+    
+    comments.forEach(comment => {
+        const div = document.createElement('div');
+        div.textContent = comment.text; // Safe!
+        container.appendChild(div);
+    });
+}
+
+// FIX 2: HTML Entity Encoding
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}</code></pre>
+
+                <h4>Cookie Protection:</h4>
+                <ul>
+                    <li>Set <code>HttpOnly</code> flag to prevent JavaScript access</li>
+                    <li>Use <code>Secure</code> flag for HTTPS-only transmission</li>
+                    <li>Set <code>SameSite=Strict</code> to prevent CSRF</li>
+                    <li>Implement <code>Content-Security-Policy</code> headers</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="button-container">
+            <button class="nav-btn btn-home" onclick="window.location.href='index.html'">
+                <span class="btn-icon"></span> Back to Home
+            </button>
+            <button class="nav-btn btn-prev" onclick="window.location.href='lab1.html'">
+                <span class="btn-icon">←</span> Previous Lab
+            </button>
+            <button class="nav-btn btn-next" onclick="window.location.href='lab3.html'">
+                Next Lab <span class="btn-icon">→</span>
+            </button>
+        </div>
+
+        <div class="footer">
+            <p>⚠️ This lab is for educational purposes only. Never deploy vulnerable code to production.</p>
+        </div>
+    </div>
+
+    <script>
+        // ============ SET DEMO COOKIES ============
+        // These cookies simulate what a real app might have
+        function setDemoCookies() {
+            document.cookie = "session_id=abc123def456; path=/; SameSite=Lax";
+            document.cookie = "user_role=admin; path=/; SameSite=Lax";
+            document.cookie = "csrf_token=xyz789; path=/; SameSite=Lax";
+            document.cookie = "last_login=2024-01-15; path=/; SameSite=Lax";
+            // This one has HttpOnly (can't be read by JavaScript)
+            // document.cookie = "secret_token=super_secret; path=/; HttpOnly; SameSite=Strict";
+        }
+        
+        // Display cookie status
+        function updateCookieStatus() {
+            const cookieStatus = document.getElementById('cookieStatus');
+            const cookieList = document.getElementById('cookieList');
+            
+            if (document.cookie) {
+                cookieStatus.innerHTML = '✅ <strong style="color: #2ed573;">Cookies Available!</strong>';
+                cookieList.textContent = document.cookie;
+                cookieList.style.color = '#feca57';
+            } else {
+                cookieStatus.innerHTML = '❌ <strong style="color: #ff4757;">No Cookies Found</strong>';
+                cookieList.textContent = 'None (cookies may not work with file:// protocol)';
+                cookieList.style.color = '#8892b0';
+            }
+        }
+        
+        // ============ COMMENT SYSTEM ============
+        const STORAGE_KEY = 'xss_lab_comments';
+        
+        function getComments() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        }
+        
+        function saveComments(comments) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+        }
+        
+        function addComment() {
+            const username = document.getElementById('usernameInput').value || 'Anonymous';
+            const commentText = document.getElementById('commentInput').value.trim();
+            
+            if (!commentText) {
+                alert('Please enter a comment');
+                return;
+            }
+            
+            const comments = getComments();
+            comments.push({
+                id: Date.now(),
+                username: username,
+                text: commentText,
+                timestamp: new Date().toISOString()
+            });
+            
+            saveComments(comments);
+            displayComments();
+            
+            document.getElementById('commentInput').value = '';
+            document.getElementById('commentInput').focus();
+        }
+        
+        function deleteComment(id) {
+            let comments = getComments();
+            comments = comments.filter(c => c.id !== id);
+            saveComments(comments);
+            displayComments();
+        }
+        
+        function clearAllComments() {
+            if (confirm('Are you sure you want to delete all comments? This cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                displayComments();
+            }
+        }
+        
+        function reloadPage() {
+            location.reload();
+        }
+        
+        function testPayload(payload) {
+            document.getElementById('commentInput').value = payload;
+            document.getElementById('usernameInput').value = 'Attacker';
+            addComment();
+        }
+        
+        // VULNERABLE DISPLAY FUNCTION
+        function displayComments() {
+            const comments = getComments();
+            const container = document.getElementById('commentsContainer');
+            const countSpan = document.getElementById('commentCount');
+            
+            if (comments.length === 0) {
+                container.innerHTML = '<p style="color: #64748b;">No comments yet. Be the first to comment!</p>';
+                countSpan.textContent = '(0 comments stored)';
+                return;
+            }
+            
+            countSpan.textContent = `(${comments.length} comments stored)`;
+            
+            let html = '';
+            comments.forEach(comment => {
+                html += `
+                    <div class="comment-card">
+                        <div class="comment-header">
+                            <strong>👤 ${comment.username}</strong>
+                            <div>
+                                <small style="color: #94a3b8;">${new Date(comment.timestamp).toLocaleString()}</small>
+                                <button onclick="deleteComment(${comment.id})" class="delete-btn">✕</button>
+                            </div>
+                        </div>
+                        <div class="comment-content">
+                            ${comment.text}  <!-- XSS VULNERABILITY -->
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function toggleSolution() {
+            const panel = document.getElementById('solutionPanel');
+            const btn = document.getElementById('solutionBtn');
+            
+            if (panel.classList.contains('show')) {
+                panel.classList.remove('show');
+                btn.innerHTML = '📖 Show Solution & Fix';
+            } else {
+                panel.classList.add('show');
+                btn.innerHTML = '📖 Hide Solution & Fix';
+            }
+        }
+        
+        // Keyboard shortcut
+        document.getElementById('commentInput').addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                addComment();
+            }
+        });
+        
+        // ============ INITIALIZATION ============
+        window.addEventListener('DOMContentLoaded', function() {
+            setDemoCookies();
+            updateCookieStatus();
+            displayComments();
+            
+            const comments = getComments();
+            if (comments.length > 0) {
+                console.log('📦 Stored XSS Lab: Comments loaded from localStorage');
+                console.log(`Found ${comments.length} stored comment(s)`);
+                console.log('⚠️ Comments rendered with innerHTML - XSS possible!');
+            }
+            console.log('🍪 Demo cookies set:', document.cookie);
+        });
+        
+        // Warn before leaving
+        window.addEventListener('beforeunload', function(e) {
+            const commentInput = document.getElementById('commentInput');
+            if (commentInput.value.trim()) {
+                e.preventDefault();
+                e.returnValue = 'You have an unsaved comment. Are you sure you want to leave?';
+            }
+        });
+    </script>
+</body>
+</html>
