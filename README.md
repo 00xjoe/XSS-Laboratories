@@ -8,7 +8,7 @@
 A comprehensive collection of Cross-Site Scripting (XSS) laboratories for learning and practicing web security concepts.
 
 ## Overview
-Try it live: [XSS-Laboratories/](https://00xjoe.github.io/Just-test/) 
+Try it live: [XSS-Laboratories](https://00xjoe.github.io/Just-test/) 
 XSS Laboratories is a platform I created containing multiple progressive labs designed to teach various XSS attack vectors and defense mechanisms. All labs were independently solved and developed through hands-on research.
 
 ##  Credits
