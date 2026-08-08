@@ -1,5 +1,9 @@
 # XSS Laboratories 
 
+![HTML](https://img.shields.io/badge/HTML-86.2%25-orange)
+![CSS](https://img.shields.io/badge/CSS-13.8%25-blue)
+![Status](https://img.shields.io/badge/Status-Complete-brightgreen)
+
 A comprehensive collection of Cross-Site Scripting (XSS) laboratories for learning and practicing web security concepts.
 
 ## Overview
